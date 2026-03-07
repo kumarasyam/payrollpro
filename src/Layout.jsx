@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { createPageUrl } from "@/utils";
 import {
@@ -71,7 +72,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-out
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-slate-900 to-indigo-950 text-white transform transition-transform duration-300 ease-out border-r border-indigo-500/10 shadow-2xl shadow-indigo-900/20
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 flex flex-col`}
       >
         {/* Logo */}
@@ -135,21 +136,20 @@ export default function Layout({ children, currentPageName }) {
               {isAdmin ? "Admin" : "Employee"}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            className="w-full mt-2 text-slate-400 hover:text-white hover:bg-slate-800 justify-start gap-2"
+          <button
+            className="w-full mt-2 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
             Sign out
-          </Button>
+          </button>
         </div>
       </aside>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="bg-white border-b border-slate-200 px-4 lg:px-8 py-4 flex items-center gap-4 sticky top-0 z-30">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-4 lg:px-8 py-4 flex items-center gap-4 sticky top-0 z-30 shadow-sm shadow-slate-200/20">
           <button
             className="lg:hidden text-slate-600 hover:text-slate-900"
             onClick={() => setSidebarOpen(true)}
@@ -164,8 +164,19 @@ export default function Layout({ children, currentPageName }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-8">
-          {children}
+        <main className="flex-1 p-4 lg:p-8 relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentPageName}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

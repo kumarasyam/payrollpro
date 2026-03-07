@@ -14,6 +14,7 @@ const SESSION_KEY = 'payrollpro_session';
 // ============================================================
 async function apiFetch(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  /** @type {RequestInit} */
   const config = {
     headers: { 'Content-Type': 'application/json' },
     ...options,
