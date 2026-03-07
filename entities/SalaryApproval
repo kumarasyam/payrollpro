@@ -1,0 +1,57 @@
+{
+  "name": "SalaryApproval",
+  "type": "object",
+  "properties": {
+    "employee_name": {
+      "type": "string"
+    },
+    "employee_email": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "month": {
+      "type": "string"
+    },
+    "current_salary": {
+      "type": "number"
+    },
+    "proposed_salary": {
+      "type": "number"
+    },
+    "change_type": {
+      "type": "string",
+      "enum": [
+        "increment",
+        "bonus",
+        "deduction",
+        "revision"
+      ],
+      "description": "Type of salary change"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "approved_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_name",
+    "employee_email",
+    "month",
+    "current_salary",
+    "proposed_salary",
+    "change_type"
+  ]
+}

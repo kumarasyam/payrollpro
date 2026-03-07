@@ -1,0 +1,71 @@
+{
+  "name": "Payslip",
+  "type": "object",
+  "properties": {
+    "employee_name": {
+      "type": "string"
+    },
+    "employee_email": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "month": {
+      "type": "string",
+      "description": "Pay month e.g. March 2026"
+    },
+    "base_salary": {
+      "type": "number"
+    },
+    "hra": {
+      "type": "number",
+      "description": "House Rent Allowance"
+    },
+    "transport_allowance": {
+      "type": "number"
+    },
+    "medical_allowance": {
+      "type": "number"
+    },
+    "bonus": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_deduction": {
+      "type": "number"
+    },
+    "provident_fund": {
+      "type": "number"
+    },
+    "other_deductions": {
+      "type": "number",
+      "default": 0
+    },
+    "gross_salary": {
+      "type": "number"
+    },
+    "total_deductions": {
+      "type": "number"
+    },
+    "net_salary": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "approved",
+        "paid"
+      ],
+      "default": "draft"
+    }
+  },
+  "required": [
+    "employee_name",
+    "employee_email",
+    "month",
+    "base_salary",
+    "net_salary"
+  ]
+}

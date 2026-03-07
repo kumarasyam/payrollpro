@@ -1,0 +1,62 @@
+{
+  "name": "LeaveApplication",
+  "type": "object",
+  "properties": {
+    "employee_name": {
+      "type": "string"
+    },
+    "employee_email": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "leave_type": {
+      "type": "string",
+      "enum": [
+        "sick",
+        "casual",
+        "earned",
+        "maternity",
+        "paternity",
+        "unpaid"
+      ],
+      "description": "Type of leave"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "days": {
+      "type": "number",
+      "description": "Number of leave days"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "admin_remarks": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "employee_name",
+    "employee_email",
+    "leave_type",
+    "start_date",
+    "end_date",
+    "reason"
+  ]
+}

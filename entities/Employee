@@ -1,0 +1,60 @@
+{
+  "name": "Employee",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the employee"
+    },
+    "email": {
+      "type": "string",
+      "description": "Employee email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department name"
+    },
+    "designation": {
+      "type": "string",
+      "description": "Job title/designation"
+    },
+    "date_of_joining": {
+      "type": "string",
+      "format": "date",
+      "description": "Date employee joined"
+    },
+    "base_salary": {
+      "type": "number",
+      "description": "Monthly base salary"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "on_leave"
+      ],
+      "default": "active"
+    },
+    "leave_balance": {
+      "type": "number",
+      "default": 24,
+      "description": "Remaining leave days"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "Profile photo URL"
+    }
+  },
+  "required": [
+    "full_name",
+    "email",
+    "department",
+    "designation",
+    "base_salary"
+  ]
+}

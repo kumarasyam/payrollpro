@@ -1,0 +1,26 @@
+{
+  "name": "Department",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Department name"
+    },
+    "head": {
+      "type": "string",
+      "description": "Department head name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Department description"
+    },
+    "employee_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of employees"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
