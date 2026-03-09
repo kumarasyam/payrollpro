@@ -100,7 +100,7 @@
 
 @layer utilities {
   .glass-panel {
-    @apply bg-white/70 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgb(0, 0, 0, 0.04)];
+    @apply bg-white/70 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgba(0, 0, 0, 0.04)];
   }
 
   .glass-card {
