@@ -20,6 +20,8 @@ app.use(express.json());
 async function query(sqlText, params = {}) {
     const pool = await getPool();
     const request = pool.request();
+    console.log('--- EXEC SQL --->', sqlText);
+    console.log('--- W/ PARAMS --->', params);
     for (const [key, value] of Object.entries(params)) {
         request.input(key, value);
     }
@@ -130,12 +132,23 @@ function createCrudRoutes(tableName, entityName) {
     app.post(`/api/${entityName}`, async (req, res) => {
         try {
             const data = req.body;
-            // Ignore system columns on create
-            const columns = Object.keys(data).filter(k => !['id', 'created_date', 'updated_date'].includes(k));
-            const values = columns.map((_, i) => `@p${i}`);
+            const columns = [];
+            const values = [];
             const params = {};
-            columns.forEach((col, i) => {
-                params[`p${i}`] = data[col];
+
+            Object.keys(data).forEach(col => {
+                if (['id', 'created_date', 'updated_date'].includes(col)) return;
+
+                const value = data[col];
+                const cleanValue = (value === '' || value === undefined) ? null : value;
+
+                columns.push(col);
+                if (cleanValue === null) {
+                    values.push('NULL');
+                } else {
+                    values.push(`@col_${col}`);
+                    params[`col_${col}`] = cleanValue;
+                }
             });
 
             const result = await query(
@@ -154,26 +167,41 @@ function createCrudRoutes(tableName, entityName) {
             const { id } = req.params;
             const data = req.body;
             const setClauses = [];
-            let pIndex = 0;
             const params = { id: parseInt(id) };
 
             Object.entries(data).forEach(([key, value]) => {
                 // System columns are managed by SQL default/triggers or manual SQL logic below
                 if (['id', 'created_date', 'updated_date'].includes(key)) return;
-                setClauses.push(`${key} = @p${pIndex}`);
-                params[`p${pIndex}`] = value;
-                pIndex++;
+
+                // ODBC driver throws "Associated statement is not prepared" if it receives empty string or undefined
+                const cleanValue = (value === '' || value === undefined) ? null : value;
+
+                if (cleanValue === null) {
+                    setClauses.push(`${key} = NULL`);
+                } else {
+                    setClauses.push(`${key} = @col_${key}`);
+                    params[`col_${key}`] = cleanValue;
+                }
             });
 
             if (setClauses.length === 0) {
                 return res.status(400).json({ error: 'No fields to update' });
             }
 
+            delete params.id;
+            params['id1'] = parseInt(id);
+            params['id2'] = parseInt(id);
+
             const result = await query(
-                `UPDATE dbo.${tableName} SET ${setClauses.join(', ')}, updated_date = GETDATE() WHERE id = @id; SELECT * FROM dbo.${tableName} WHERE id = @id;`,
+                `UPDATE dbo.${tableName} SET ${setClauses.join(', ')}, updated_date = GETDATE() WHERE id = @id1; SELECT * FROM dbo.${tableName} WHERE id = @id2;`,
                 params
             );
-            res.json(result.recordset[0]);
+
+            if (result.recordset && result.recordset.length > 0) {
+                res.json(result.recordset[0]);
+            } else {
+                res.status(404).json({ error: 'Record not found' });
+            }
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
