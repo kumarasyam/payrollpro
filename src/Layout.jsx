@@ -72,9 +72,11 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-slate-900 to-indigo-950 text-white transform transition-transform duration-300 ease-out border-r border-indigo-500/10 shadow-2xl shadow-indigo-900/20
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 flex flex-col`}
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-gradient-to-br from-indigo-950 via-[slate-900] to-violet-950 text-white transform transition-transform duration-300 ease-out border-r border-indigo-500/20 shadow-[8px_0_30px_rgb(0,0,0,0.12)]
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 flex flex-col relative overflow-hidden`}
       >
+        {/* Subtle decorative glow in sidebar */}
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
         {/* Logo */}
         <div className="p-6 border-b border-slate-700/50">
           <div className="flex items-center justify-between">
@@ -149,7 +151,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-4 lg:px-8 py-4 flex items-center gap-4 sticky top-0 z-30 shadow-sm shadow-slate-200/20">
+        <header className="glass-panel px-4 lg:px-8 py-4 flex items-center gap-4 sticky top-0 z-30">
           <button
             className="lg:hidden text-slate-600 hover:text-slate-900"
             onClick={() => setSidebarOpen(true)}
