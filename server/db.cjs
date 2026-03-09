@@ -2,21 +2,16 @@
  * SQL Server Database Connection
  * Uses Windows Authentication by default (same as your SSMS login)
  */
-const sql = require('mssql');
+const sql = require('mssql/msnodesqlv8');
 require('dotenv').config();
 
+const serverName = process.env.DB_SERVER || 'localhost\\SQLEXPRESS';
+const dbName = process.env.DB_NAME || 'PayrollProDB';
+
 const config = {
-    server: process.env.DB_SERVER || 'localhost\\SQLEXPRESS',
-    database: process.env.DB_NAME || 'PayrollProDB',
-    options: {
-        trustServerCertificate: true,  // Required for local dev
-        trustedConnection: true,       // Windows Authentication
-        enableArithAbort: true,
-    },
-    // If using SQL Server Authentication instead, uncomment:
-    // user: process.env.DB_USER || 'sa',
-    // password: process.env.DB_PASSWORD || 'your_password',
-    driver: 'msnodesqlv8',  // Needed for Windows Auth
+    // We use a raw connection string so that Windows can automatically 
+    // connect via Shared Memory/Named Pipes instead of strict TCP/IP.
+    connectionString: `Driver={SQL Server};Server=${serverName};Database=${dbName};Trusted_Connection=yes;`
 };
 
 let pool;
