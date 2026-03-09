@@ -62,6 +62,15 @@ app.post('/api/auth/register', async (req, res) => {
             { email, password, full_name, role }
         );
         const user = result.recordset[0];
+
+        // If the user registered as an employee, also insert them into the Employees table
+        if (role === 'employee') {
+            await query(
+                `INSERT INTO dbo.Employees (full_name, email, department, designation, base_salary, status) 
+                 VALUES (@full_name, @email, 'Unassigned', 'New Joiner', 0, 'active')`,
+                { full_name, email }
+            );
+        }
         res.json({ id: user.id, email: user.email, full_name: user.full_name, role: user.role });
     } catch (err) {
         res.status(500).json({ error: err.message });

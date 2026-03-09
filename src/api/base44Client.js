@@ -272,6 +272,27 @@ function createAuth() {
       };
       users.push(newUser);
       localStorage.setItem('payrollpro_users', JSON.stringify(users));
+
+      if (role === 'employee') {
+        const employees = JSON.parse(localStorage.getItem('payrollpro_Employee') || '[]');
+        employees.push({
+          id: `e-${crypto.randomUUID().slice(0, 8)}`,
+          full_name,
+          email,
+          phone: '',
+          department: 'Unassigned',
+          designation: 'New Joiner',
+          date_of_joining: new Date().toISOString().split('T')[0],
+          base_salary: 0,
+          salary: 0,
+          leave_balance: 24,
+          status: 'active',
+          created_date: new Date().toISOString(),
+          updated_date: new Date().toISOString(),
+        });
+        localStorage.setItem('payrollpro_Employee', JSON.stringify(employees));
+      }
+
       const { password: _, ...sessionUser } = newUser;
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
       return sessionUser;
