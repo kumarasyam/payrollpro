@@ -130,7 +130,8 @@ function createCrudRoutes(tableName, entityName) {
     app.post(`/api/${entityName}`, async (req, res) => {
         try {
             const data = req.body;
-            const columns = Object.keys(data);
+            // Ignore system columns on create
+            const columns = Object.keys(data).filter(k => !['id', 'created_date', 'updated_date'].includes(k));
             const values = columns.map((_, i) => `@p${i}`);
             const params = {};
             columns.forEach((col, i) => {
@@ -153,12 +154,15 @@ function createCrudRoutes(tableName, entityName) {
             const { id } = req.params;
             const data = req.body;
             const setClauses = [];
+            let pIndex = 0;
             const params = { id: parseInt(id) };
 
-            Object.entries(data).forEach(([key, value], i) => {
-                if (key === 'id') return; // Don't update ID
-                setClauses.push(`${key} = @p${i}`);
-                params[`p${i}`] = value;
+            Object.entries(data).forEach(([key, value]) => {
+                // System columns are managed by SQL default/triggers or manual SQL logic below
+                if (['id', 'created_date', 'updated_date'].includes(key)) return;
+                setClauses.push(`${key} = @p${pIndex}`);
+                params[`p${pIndex}`] = value;
+                pIndex++;
             });
 
             if (setClauses.length === 0) {
