@@ -202,6 +202,24 @@ CREATE TABLE dbo.Attendance (
 );
 GO
 
+-- ============================================================
+-- Table 8: Leave Policy (Company Rules)
+-- ============================================================
+CREATE TABLE dbo.LeavePolicy (
+    id                  INT IDENTITY(1,1) PRIMARY KEY,
+    max_sick            INT             NOT NULL DEFAULT 12,
+    max_casual          INT             NOT NULL DEFAULT 12,
+    max_earned          INT             NOT NULL DEFAULT 15,
+    advance_days_required INT           NOT NULL DEFAULT 3,
+    admin_action_days   INT             NOT NULL DEFAULT 3,
+    updated_date        DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+GO
+
+INSERT INTO dbo.LeavePolicy (max_sick, max_casual, max_earned, advance_days_required, admin_action_days)
+VALUES (12, 12, 15, 3, 3);
+GO
+
 
 -- ============================================================
 -- Indexes
