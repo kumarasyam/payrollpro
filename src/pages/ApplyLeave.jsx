@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,14 @@ export default function ApplyLeave() {
     select: (data) => data?.[0],
   });
 
+  const { data: policy = { max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3, admin_action_days: 7 } } = useQuery({
+    queryKey: ["leave-policy"],
+    queryFn: async () => {
+      const list = await appClient.entities.LeavePolicy.list();
+      return list?.[0] || { max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3, admin_action_days: 7 };
+    }
+  });
+
   const { data: leaves = [] } = useQuery({
     queryKey: ["my-leaves", user?.email],
     queryFn: () => appClient.entities.LeaveApplication.filter({ employee_email: user.email }, "-created_date"),
@@ -43,7 +51,7 @@ export default function ApplyLeave() {
   });
 
   const [form, setForm] = useState({
-    leave_type: "", start_date: "", end_date: "", reason: "",
+    leave_type: "", start_date: "", end_date: "", reason: ""
   });
 
   const createMutation = useMutation({
@@ -53,6 +61,9 @@ export default function ApplyLeave() {
       setForm({ leave_type: "", start_date: "", end_date: "", reason: "" });
       toast.success("Leave application submitted successfully");
     },
+    onError: (err) => {
+      toast.error(`Submission failed: ${err.message}`);
+    }
   });
 
   const cancelMutation = useMutation({
@@ -66,17 +77,27 @@ export default function ApplyLeave() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    if (!form.start_date || !form.end_date) {
+      toast.error("Please select both start and end dates");
+      return;
+    }
+
     const startDate = new Date(form.start_date);
     const endDate = new Date(form.end_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const days = differenceInDays(endDate, startDate) + 1;
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      toast.error("Invalid dates selected");
+      return;
+    }
 
-    // Load policy
-    const policy = JSON.parse(localStorage.getItem("payrollpro_leave_policy")) || {
-      max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3,
-    };
+    if (endDate < startDate) {
+      toast.error("End date cannot be before start date");
+      return;
+    }
+
+    const days = differenceInDays(endDate, startDate) + 1;
 
     // Time-bound rules validation
     if (policy.advance_days_required > 0) {
@@ -95,22 +116,28 @@ export default function ApplyLeave() {
       new Date(l.start_date).getFullYear() === currentYear
     );
     const usedDays = sameTypeLeaves.reduce((sum, l) => sum + (l.days || 0), 0);
-    const maxDays = policy[`max_${form.leave_type}`] !== undefined ? policy[`max_${form.leave_type}`] : 999;
+    const maxDaysKey = `max_${form.leave_type}`;
+    const maxDays = policy[maxDaysKey] !== undefined ? policy[maxDaysKey] : 999;
 
     if (usedDays + days > maxDays) {
       toast.error(`Limit exceeded! You can take up to ${maxDays} ${form.leave_type} leaves per year. (Used: ${usedDays})`);
       return;
     }
 
+    if (!employee?.full_name && !user?.full_name) {
+      toast.error("Employee information not found. Please try again or refresh.");
+      return;
+    }
+
     createMutation.mutate({
       employee_name: employee?.full_name || user?.full_name,
       employee_email: user.email,
-      department: employee?.department || "",
+      department: employee?.department || "Unassigned",
       leave_type: form.leave_type,
       start_date: form.start_date,
       end_date: form.end_date,
       days,
-      reason: form.reason,
+      reason: form.reason || "",
       status: "pending",
     });
   };
@@ -192,8 +219,8 @@ export default function ApplyLeave() {
                         {leave.start_date && format(new Date(leave.start_date), "MMM d, yyyy")} — {leave.end_date && format(new Date(leave.end_date), "MMM d, yyyy")} · {leave.days} days
                       </p>
                       <p className="text-xs text-slate-500 mt-1">{leave.reason}</p>
-                      {leave.admin_remarks && (
-                        <p className="text-xs text-slate-500 mt-1 italic">Admin: {leave.admin_remarks}</p>
+                      {leave.remarks && (
+                        <p className="text-xs text-slate-500 mt-1 italic">Admin: {leave.remarks}</p>
                       )}
                     </div>
                   </div>

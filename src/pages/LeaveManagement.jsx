@@ -41,7 +41,7 @@ export default function LeaveManagement() {
       toast.error("Please provide a reason for rejection in the Admin Remarks field.");
       return;
     }
-    updateMutation.mutate({ id: selected.id, data: { status, admin_remarks: remarks } });
+    updateMutation.mutate({ id: selected.id, data: { status, remarks: remarks } });
   };
 
   const filtered = leaves.filter((l) => {
@@ -198,7 +198,7 @@ export default function LeaveManagement() {
             ) : (
               <Badge className={`${statusColors[selected?.status]} border-0 text-sm px-4 py-2`}>
                 {selected?.status === "approved" ? "Approved" : "Rejected"}
-                {selected?.admin_remarks && ` — ${selected.admin_remarks}`}
+                {selected?.remarks && ` — ${selected.remarks}`}
               </Badge>
             )}
           </DialogFooter>

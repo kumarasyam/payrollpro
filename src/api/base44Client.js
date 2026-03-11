@@ -501,5 +501,6 @@ export const appClient = {
     Payslip: createEntityStore('payslips'),
     SalaryApproval: createEntityStore('salary-approvals'),
     Attendance: createEntityStore('attendance'),
+    LeavePolicy: createEntityStore('leave-policy'),
   },
 };

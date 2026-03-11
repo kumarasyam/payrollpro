@@ -1,39 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Settings } from "lucide-react";
-import { toast } from "sonner";
-
-export const DEFAULT_LEAVE_POLICY = {
-    max_sick: 12,
-    max_casual: 12,
-    max_earned: 15,
-    advance_days_required: 3,
-    admin_action_days: 7,
-};
-
-export function getLeavePolicy() {
-    const data = localStorage.getItem("payrollpro_leave_policy");
-    return data ? JSON.parse(data) : DEFAULT_LEAVE_POLICY;
-}
+import { Settings } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { appClient } from "@/api/base44Client";
 
 export default function LeavePolicy() {
-    const [policy, setPolicy] = useState(DEFAULT_LEAVE_POLICY);
+    const { data: policy = { max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3, admin_action_days: 7 }, isLoading } = useQuery({
+        queryKey: ["leave-policy"],
+        queryFn: async () => {
+            const list = await appClient.entities.LeavePolicy.list();
+            return list?.[0] || { max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3, admin_action_days: 7 };
+        }
+    });
 
-    useEffect(() => {
-        setPolicy(getLeavePolicy());
-    }, []);
-
-    const handleChange = (key, value) => {
-        setPolicy((prev) => ({ ...prev, [key]: parseInt(value) || 0 }));
-    };
-
-    const handleSave = () => {
-        localStorage.setItem("payrollpro_leave_policy", JSON.stringify(policy));
-        toast.success("Leave policy updated successfully");
-    };
+    if (isLoading) return <div className="p-8 text-center text-slate-500">Loading policy...</div>;
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -57,7 +39,8 @@ export default function LeavePolicy() {
                                 type="number"
                                 min="0"
                                 value={policy.max_sick}
-                                onChange={(e) => handleChange("max_sick", e.target.value)}
+                                readOnly
+                                className="bg-slate-50 cursor-not-allowed"
                             />
                         </div>
                         <div className="space-y-2">
@@ -66,7 +49,8 @@ export default function LeavePolicy() {
                                 type="number"
                                 min="0"
                                 value={policy.max_casual}
-                                onChange={(e) => handleChange("max_casual", e.target.value)}
+                                readOnly
+                                className="bg-slate-50 cursor-not-allowed"
                             />
                         </div>
                         <div className="space-y-2">
@@ -75,7 +59,8 @@ export default function LeavePolicy() {
                                 type="number"
                                 min="0"
                                 value={policy.max_earned}
-                                onChange={(e) => handleChange("max_earned", e.target.value)}
+                                readOnly
+                                className="bg-slate-50 cursor-not-allowed"
                             />
                         </div>
                     </div>
@@ -98,7 +83,8 @@ export default function LeavePolicy() {
                                 type="number"
                                 min="0"
                                 value={policy.advance_days_required}
-                                onChange={(e) => handleChange("advance_days_required", e.target.value)}
+                                readOnly
+                                className="bg-slate-50 cursor-not-allowed"
                             />
                         </div>
                         <div className="space-y-2">
@@ -108,19 +94,13 @@ export default function LeavePolicy() {
                                 type="number"
                                 min="1"
                                 value={policy.admin_action_days}
-                                onChange={(e) => handleChange("admin_action_days", e.target.value)}
+                                readOnly
+                                className="bg-slate-50 cursor-not-allowed"
                             />
                         </div>
                     </div>
                 </CardContent>
             </Card>
-
-            <div className="flex justify-end">
-                <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Policy
-                </Button>
-            </div>
         </div>
     );
 }

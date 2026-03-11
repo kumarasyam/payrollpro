@@ -226,6 +226,7 @@ createCrudRoutes('LeaveApplications', 'leaves');
 createCrudRoutes('Payslips', 'payslips');
 createCrudRoutes('SalaryApprovals', 'salary-approvals');
 createCrudRoutes('Attendance', 'attendance');
+createCrudRoutes('LeavePolicy', 'leave-policy');
 
 
 // ============================================================
