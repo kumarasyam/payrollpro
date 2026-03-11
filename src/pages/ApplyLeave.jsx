@@ -65,7 +65,43 @@ export default function ApplyLeave() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const days = differenceInDays(new Date(form.end_date), new Date(form.start_date)) + 1;
+
+    const startDate = new Date(form.start_date);
+    const endDate = new Date(form.end_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const days = differenceInDays(endDate, startDate) + 1;
+
+    // Load policy
+    const policy = JSON.parse(localStorage.getItem("payrollpro_leave_policy")) || {
+      max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3,
+    };
+
+    // Time-bound rules validation
+    if (policy.advance_days_required > 0) {
+      const advanceDays = differenceInDays(startDate, today);
+      if (advanceDays < policy.advance_days_required) {
+        toast.error(`Policy requires applying at least ${policy.advance_days_required} days in advance.`);
+        return;
+      }
+    }
+
+    // Leave balance per type validation
+    const currentYear = new Date().getFullYear();
+    const sameTypeLeaves = leaves.filter(l =>
+      l.leave_type === form.leave_type &&
+      l.status !== "rejected" &&
+      new Date(l.start_date).getFullYear() === currentYear
+    );
+    const usedDays = sameTypeLeaves.reduce((sum, l) => sum + (l.days || 0), 0);
+    const maxDays = policy[`max_${form.leave_type}`] !== undefined ? policy[`max_${form.leave_type}`] : 999;
+
+    if (usedDays + days > maxDays) {
+      toast.error(`Limit exceeded! You can take up to ${maxDays} ${form.leave_type} leaves per year. (Used: ${usedDays})`);
+      return;
+    }
+
     createMutation.mutate({
       employee_name: employee?.full_name || user?.full_name,
       employee_email: user.email,

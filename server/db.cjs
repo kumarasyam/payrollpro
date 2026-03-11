@@ -20,6 +20,10 @@ async function getPool() {
     if (!pool) {
         try {
             pool = await sql.connect(config);
+            pool.on('error', err => {
+                console.error('Database connection lost:', err.message);
+                pool = null; // Force reconnect on next request
+            });
             console.log('Connected to SQL Server: PayrollProDB');
         } catch (err) {
             console.error('Database connection failed:', err.message);

@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -55,8 +55,7 @@ export default function PayslipManagement() {
     const hra = base * 0.2;
     const transport = 200;
     const medical = 150;
-    const bonus = parseFloat(form.bonus) || 0;
-    const gross = base + hra + transport + medical + bonus;
+    const gross = base + hra + transport + medical;
     const tax = gross * 0.1;
     const pf = base * 0.12;
     const otherDed = parseFloat(form.other_deductions) || 0;
@@ -70,7 +69,7 @@ export default function PayslipManagement() {
       month: form.month,
       base_salary: base,
       hra, transport_allowance: transport, medical_allowance: medical,
-      bonus, tax_deduction: Math.round(tax * 100) / 100,
+      bonus: 0, tax_deduction: Math.round(tax * 100) / 100,
       provident_fund: Math.round(pf * 100) / 100,
       other_deductions: otherDed,
       gross_salary: Math.round(gross * 100) / 100,
@@ -179,15 +178,33 @@ export default function PayslipManagement() {
               <Label>Month</Label>
               <Input value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })} placeholder="e.g. March 2026" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Bonus ($)</Label>
-                <Input type="number" value={form.bonus} onChange={(e) => setForm({ ...form, bonus: e.target.value })} />
-              </div>
-              <div>
-                <Label>Other Deductions ($)</Label>
-                <Input type="number" value={form.other_deductions} onChange={(e) => setForm({ ...form, other_deductions: e.target.value })} />
-              </div>
+            {(() => {
+              const emp = employees.find((e) => e.email === form.employee_email);
+              if (!emp) return null;
+              const base = emp.base_salary || 0;
+              const hra = base * 0.2;
+              const transport = 200;
+              const medical = 150;
+              const gross = base + hra + transport + medical;
+              const tax = gross * 0.1;
+              const pf = base * 0.12;
+              return (
+                <div className="bg-slate-50 p-4 rounded-lg space-y-2 text-sm border">
+                  <h4 className="font-semibold text-slate-700 mb-2 border-b pb-2">Calculated Breakdown</h4>
+                  <div className="flex justify-between text-slate-600"><span>Base Salary:</span> <span>₹{Math.round(base).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>Allowances (HRA, Transport, Medical):</span> <span>₹{Math.round(hra + transport + medical).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-rose-600"><span>Tax (10%):</span> <span>-₹{Math.round(tax).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-rose-600"><span>PF (12%):</span> <span>-₹{Math.round(pf).toLocaleString()}</span></div>
+                  <div className="flex justify-between font-semibold pt-2 border-t text-slate-800">
+                    <span>Net Base Salary (before other deductions):</span> 
+                    <span>₹{Math.round(gross - tax - pf).toLocaleString()}</span>
+                  </div>
+                </div>
+              );
+            })()}
+            <div>
+              <Label>Other Deductions (₹)</Label>
+              <Input type="number" value={form.other_deductions} onChange={(e) => setForm({ ...form, other_deductions: e.target.value })} placeholder="0" />
             </div>
           </div>
           <DialogFooter>

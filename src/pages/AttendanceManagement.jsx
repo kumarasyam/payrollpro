@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,7 +54,7 @@ export default function AttendanceManagement() {
         const checkOut = form.check_out ? new Date(`2000-01-01T${form.check_out}`) : null;
         let workedHours = 0;
         if (checkIn && checkOut) {
-            workedHours = Math.max(0, (checkOut - checkIn) / (1000 * 60 * 60));
+            workedHours = Math.max(0, (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60));
         }
         const overtime = Math.max(0, workedHours - 8);
 
@@ -69,6 +70,35 @@ export default function AttendanceManagement() {
             overtime_hours: Math.round(overtime * 10) / 10,
             notes: form.notes,
         });
+    };
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }) => appClient.entities.Attendance.update(id, data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance"] }); },
+    });
+
+    const [selectedRec, setSelectedRec] = useState(null);
+    const [remarks, setRemarks] = useState("");
+    const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
+
+    const handleAction = (rec, newStatus) => {
+        if (newStatus === 'absent') {
+            setSelectedRec(rec);
+            setRejectionDialogOpen(true);
+            return;
+        }
+        updateMutation.mutate({ id: rec.id, data: { status: newStatus, notes: rec.notes } });
+        setRemarks("");
+        setSelectedRec(null);
+    };
+
+    const handleReject = () => {
+        if (selectedRec && remarks.trim()) {
+            updateMutation.mutate({ id: selectedRec.id, data: { status: 'absent', notes: remarks } });
+            setRemarks("");
+            setSelectedRec(null);
+            setRejectionDialogOpen(false);
+        }
     };
 
     const filtered = attendance.filter(a => {
@@ -159,13 +189,14 @@ export default function AttendanceManagement() {
                                 <TableHead>Worked</TableHead>
                                 <TableHead>Overtime</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400">Loading...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-400">Loading...</TableCell></TableRow>
                             ) : filtered.length === 0 ? (
-                                <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400">No attendance records found</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-400">No attendance records found</TableCell></TableRow>
                             ) : (
                                 filtered.map(rec => (
                                     <TableRow key={rec.id} className="hover:bg-slate-50/50">
@@ -183,9 +214,17 @@ export default function AttendanceManagement() {
                                             {rec.overtime_hours > 0 ? `${rec.overtime_hours}h` : "—"}
                                         </TableCell>
                                         <TableCell>
-                                            <Badge className={`${statusColors[rec.status] || statusColors.present} border-0 text-xs`}>
+                                            <Badge className={`${statusColors[rec.status] || "bg-slate-100 text-slate-600"} border-0 text-xs`}>
                                                 {rec.status?.replace("_", " ")}
                                             </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {rec.status === 'pending' && (
+                                                <div className="flex gap-1 justify-end">
+                                                    <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => handleAction(rec, 'absent')}>Reject</Button>
+                                                    <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => handleAction(rec, 'present')}>Approve</Button>
+                                                </div>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -245,6 +284,26 @@ export default function AttendanceManagement() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
                         <Button onClick={handleSubmit} className="bg-indigo-600 hover:bg-indigo-700">Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Reject Attendance</DialogTitle></DialogHeader>
+                    <div className="py-4">
+                        <Label>Reason for Rejection</Label>
+                        <Textarea 
+                            value={remarks} 
+                            onChange={e => setRemarks(e.target.value)} 
+                            placeholder="Please provide a reason..." 
+                            className="mt-2"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setRejectionDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleReject} className="bg-rose-600 hover:bg-rose-700" disabled={!remarks.trim()}>
+                            Confirm Rejection
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -1,0 +1,54 @@
+[
+  {
+    "COLUMN_NAME": "id",
+    "DATA_TYPE": "int"
+  },
+  {
+    "COLUMN_NAME": "full_name",
+    "DATA_TYPE": "nvarchar"
+  },
+  {
+    "COLUMN_NAME": "email",
+    "DATA_TYPE": "nvarchar"
+  },
+  {
+    "COLUMN_NAME": "phone",
+    "DATA_TYPE": "nvarchar"
+  },
+  {
+    "COLUMN_NAME": "department_id",
+    "DATA_TYPE": "int"
+  },
+  {
+    "COLUMN_NAME": "department",
+    "DATA_TYPE": "nvarchar"
+  },
+  {
+    "COLUMN_NAME": "designation",
+    "DATA_TYPE": "nvarchar"
+  },
+  {
+    "COLUMN_NAME": "date_of_joining",
+    "DATA_TYPE": "date"
+  },
+  {
+    "COLUMN_NAME": "base_salary",
+    "DATA_TYPE": "decimal"
+  },
+  {
+    "COLUMN_NAME": "leave_balance",
+    "DATA_TYPE": "int"
+  },
+  {
+    "COLUMN_NAME": "status",
+    "DATA_TYPE": "nvarchar"
+  },
+  {
+    "COLUMN_NAME": "created_date",
+    "DATA_TYPE": "datetime2"
+  },
+  {
+    "COLUMN_NAME": "updated_date",
+    "DATA_TYPE": "datetime2"
+  }
+]

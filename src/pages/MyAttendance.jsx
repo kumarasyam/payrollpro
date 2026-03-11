@@ -1,13 +1,18 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Calendar, Clock, CheckCircle2, XCircle, Timer, AlertCircle } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Calendar, Clock, CheckCircle2, XCircle, Timer, AlertCircle, Plus } from "lucide-react";
+import { format } from "date-fns";
 
 const statusColors = {
+    pending: "bg-slate-100 text-slate-600",
     present: "bg-emerald-100 text-emerald-700",
     absent: "bg-rose-100 text-rose-700",
     half_day: "bg-amber-100 text-amber-700",
@@ -16,6 +21,7 @@ const statusColors = {
 };
 
 const statusIcons = {
+    pending: <Clock className="h-4 w-4 text-slate-600" />,
     present: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
     absent: <XCircle className="h-4 w-4 text-rose-600" />,
     half_day: <AlertCircle className="h-4 w-4 text-amber-600" />,
@@ -25,13 +31,53 @@ const statusIcons = {
 
 export default function MyAttendance() {
     const { user } = useAuth();
+    const qc = useQueryClient();
     const [monthFilter, setMonthFilter] = useState("");
+    const [formOpen, setFormOpen] = useState(false);
+    const [form, setForm] = useState({
+        check_in: "09:00", check_out: "18:00", notes: ""
+    });
+
+    const { data: employee } = useQuery({
+        queryKey: ["my-employee", user?.email],
+        queryFn: () => appClient.entities.Employee.filter({ email: user.email }),
+        enabled: !!user?.email,
+        select: (data) => data?.[0],
+    });
 
     const { data: attendance = [], isLoading } = useQuery({
         queryKey: ["my-attendance", user?.email],
         queryFn: () => appClient.entities.Attendance.filter({ employee_email: user.email }, "-date"),
         enabled: !!user?.email,
     });
+
+    const createMutation = useMutation({
+        mutationFn: (data) => appClient.entities.Attendance.create(data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ["my-attendance"] }); setFormOpen(false); },
+    });
+
+    const handleSubmit = () => {
+        const checkIn = form.check_in ? new Date(`2000-01-01T${form.check_in}`) : null;
+        const checkOut = form.check_out ? new Date(`2000-01-01T${form.check_out}`) : null;
+        let workedHours = 0;
+        if (checkIn && checkOut) {
+            workedHours = Math.max(0, (checkOut - checkIn) / (1000 * 60 * 60));
+        }
+        const overtime = Math.max(0, workedHours - 8);
+
+        createMutation.mutate({
+            employee_name: employee?.full_name || user?.full_name,
+            employee_email: user?.email,
+            department: employee?.department || "Unassigned",
+            date: format(new Date(), "yyyy-MM-dd"),
+            status: "pending",
+            check_in: form.check_in,
+            check_out: form.check_out,
+            worked_hours: Math.round(workedHours * 10) / 10,
+            overtime_hours: Math.round(overtime * 10) / 10,
+            notes: form.notes,
+        });
+    };
 
     const filtered = monthFilter
         ? attendance.filter(a => a.date?.startsWith(monthFilter))
@@ -47,9 +93,14 @@ export default function MyAttendance() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">My Attendance</h1>
-                <p className="text-slate-500 mt-1">View your attendance records and working hours</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">My Attendance</h1>
+                    <p className="text-slate-500 mt-1">View your attendance records and working hours</p>
+                </div>
+                <Button onClick={() => setFormOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/25">
+                    <Plus className="h-4 w-4 mr-2" /> Mark Today's Attendance
+                </Button>
             </div>
 
             {/* Stats */}
@@ -122,7 +173,7 @@ export default function MyAttendance() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                             <p className="font-medium text-slate-900">{rec.date}</p>
-                                            <Badge className={`${statusColors[rec.status] || statusColors.present} border-0 text-xs`}>
+                                            <Badge className={`${statusColors[rec.status] || "bg-slate-100 text-slate-600"} border-0 text-xs`}>
                                                 {rec.status?.replace("_", " ")}
                                             </Badge>
                                         </div>
@@ -141,6 +192,32 @@ export default function MyAttendance() {
                     )}
                 </CardContent>
             </Card>
+
+            <Dialog open={formOpen} onOpenChange={setFormOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Mark Today's Attendance</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label>Check In</Label>
+                                <Input type="time" value={form.check_in} onChange={e => setForm({ ...form, check_in: e.target.value })} />
+                            </div>
+                            <div>
+                                <Label>Check Out</Label>
+                                <Input type="time" value={form.check_out} onChange={e => setForm({ ...form, check_out: e.target.value })} />
+                            </div>
+                        </div>
+                        <div>
+                            <Label>Notes</Label>
+                            <Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes..." />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSubmit} className="bg-indigo-600 hover:bg-indigo-700">Submit</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

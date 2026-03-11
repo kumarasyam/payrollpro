@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -65,7 +65,7 @@ export default function SalaryRequest() {
             toast.error("Failed to submit request. Please try again.");
         },
     });
-
+    
     const handleSubmit = (e) => {
         e.preventDefault();
         const proposed = parseFloat(form.proposed_salary);
@@ -234,8 +234,6 @@ export default function SalaryRequest() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="raise">Salary Raise</SelectItem>
-                                    <SelectItem value="bonus">Bonus Request</SelectItem>
-                                    <SelectItem value="advance">Salary Advance</SelectItem>
                                     <SelectItem value="promotion">Promotion</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>

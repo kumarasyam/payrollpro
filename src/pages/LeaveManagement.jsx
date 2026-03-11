@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, XCircle, Clock, Eye } from "lucide-react";
-import { format } from "date-fns";
+import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle } from "lucide-react";
+import { format, differenceInDays, addDays } from "date-fns";
+import { toast } from "sonner";
 
 const statusColors = {
   pending: "bg-amber-100 text-amber-700",
@@ -36,6 +37,10 @@ export default function LeaveManagement() {
   });
 
   const handleAction = (status) => {
+    if (status === "rejected" && !remarks.trim()) {
+      toast.error("Please provide a reason for rejection in the Admin Remarks field.");
+      return;
+    }
     updateMutation.mutate({ id: selected.id, data: { status, admin_remarks: remarks } });
   };
 
@@ -101,7 +106,26 @@ export default function LeaveManagement() {
                     </TableCell>
                     <TableCell className="font-medium">{leave.days}</TableCell>
                     <TableCell>
-                      <Badge className={`${statusColors[leave.status]} border-0 text-xs`}>{leave.status}</Badge>
+                      <div className="flex flex-col gap-1 items-start">
+                        <Badge className={`${statusColors[leave.status]} border-0 text-xs`}>{leave.status}</Badge>
+                        {leave.status === "pending" && (
+                          <span className={`text-[10px] font-medium ${(() => {
+                            const policy = JSON.parse(localStorage.getItem("payrollpro_leave_policy")) || { admin_action_days: 7 };
+                            const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
+                            const daysLeft = policy.admin_action_days - diff;
+                            if (daysLeft < 0) return "text-rose-600 flex items-center gap-0.5";
+                            if (daysLeft <= 2) return "text-amber-600";
+                            return "text-slate-400";
+                          })()}`}>
+                            {(() => {
+                              const policy = JSON.parse(localStorage.getItem("payrollpro_leave_policy")) || { admin_action_days: 7 };
+                              const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
+                              const daysLeft = policy.admin_action_days - diff;
+                              return daysLeft < 0 ? <><AlertTriangle className="h-3 w-3" /> Overdue by {Math.abs(daysLeft)}d</> : `${daysLeft} days left to act`;
+                            })()}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => setSelected(leave)}>
