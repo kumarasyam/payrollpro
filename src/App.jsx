@@ -14,6 +14,7 @@ import LeaveManagement from './pages/LeaveManagement';
 import SalaryApprovals from './pages/SalaryApprovals';
 import PayslipManagement from './pages/PayslipManagement';
 import AttendanceManagement from './pages/AttendanceManagement';
+import LeavePolicy from './pages/LeavePolicy';
 import Reports from './pages/Reports';
 
 // Employee pages
@@ -81,6 +82,9 @@ const AuthenticatedApp = () => {
         } />
         <Route path="/AttendanceManagement" element={
           <Layout currentPageName="AttendanceManagement"><AttendanceManagement /></Layout>
+        } />
+        <Route path="/LeavePolicy" element={
+          <Layout currentPageName="LeavePolicy"><LeavePolicy /></Layout>
         } />
         <Route path="/Reports" element={
           <Layout currentPageName="Reports"><Reports /></Layout>
