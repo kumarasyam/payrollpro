@@ -39,6 +39,7 @@ CREATE TABLE dbo.Users (
     role                NVARCHAR(20)    NOT NULL DEFAULT 'employee'
                         CHECK (role IN ('admin', 'employee')),
     is_active           BIT             NOT NULL DEFAULT 1,
+    gender              NVARCHAR(10)    NULL CHECK (gender IN ('Male', 'Female', 'Other')),
     created_date        DATETIME2       NOT NULL DEFAULT GETDATE(),
     updated_date        DATETIME2       NOT NULL DEFAULT GETDATE()
 );
@@ -71,8 +72,9 @@ CREATE TABLE dbo.Employees (
     date_of_joining     DATE            NULL,
     base_salary         DECIMAL(12,2)   NOT NULL DEFAULT 0,
     leave_balance       INT             NOT NULL DEFAULT 24,
+    gender              NVARCHAR(10)    NULL CHECK (gender IN ('Male', 'Female', 'Other')),
     status              NVARCHAR(20)    NOT NULL DEFAULT 'active'
-                        CHECK (status IN ('active', 'inactive', 'on_leave')),
+    CHECK (status IN ('active', 'inactive', 'on_leave')),
     created_date        DATETIME2       NOT NULL DEFAULT GETDATE(),
     updated_date        DATETIME2       NOT NULL DEFAULT GETDATE(),
 
@@ -96,6 +98,7 @@ CREATE TABLE dbo.LeaveApplications (
     end_date            DATE            NOT NULL,
     days                INT             NOT NULL DEFAULT 1,
     reason              NVARCHAR(500)   NULL,
+    document_url        NVARCHAR(500)   NULL,
     status              NVARCHAR(20)    NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending', 'approved', 'rejected')),
     approved_by         NVARCHAR(150)   NULL,
@@ -157,11 +160,12 @@ CREATE TABLE dbo.SalaryApprovals (
     employee_email      NVARCHAR(255)   NOT NULL,
     department          NVARCHAR(100)   NULL,
     change_type         NVARCHAR(30)    NOT NULL DEFAULT 'raise'
-                        CHECK (change_type IN ('raise', 'bonus', 'advance', 'promotion', 'other')),
+                        CHECK (change_type IN ('raise', 'bonus', 'advance', 'other')),
     current_salary      DECIMAL(12,2)   NOT NULL DEFAULT 0,
     proposed_salary     DECIMAL(12,2)   NOT NULL DEFAULT 0,
     month               NVARCHAR(30)    NULL,
     reason              NVARCHAR(500)   NULL,
+    rejection_reason    NVARCHAR(500)   NULL,
     status              NVARCHAR(20)    NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending', 'approved', 'rejected')),
     approved_by         NVARCHAR(150)   NULL,
@@ -207,17 +211,19 @@ GO
 -- ============================================================
 CREATE TABLE dbo.LeavePolicy (
     id                  INT IDENTITY(1,1) PRIMARY KEY,
-    max_sick            INT             NOT NULL DEFAULT 12,
+    max_sick            INT             NOT NULL DEFAULT 15,
     max_casual          INT             NOT NULL DEFAULT 12,
-    max_earned          INT             NOT NULL DEFAULT 15,
-    advance_days_required INT           NOT NULL DEFAULT 3,
-    admin_action_days   INT             NOT NULL DEFAULT 3,
+    max_earned          INT             NOT NULL DEFAULT 20,
+    max_maternity       INT             NOT NULL DEFAULT 90,
+    max_paternity       INT             NOT NULL DEFAULT 15,
+    advance_days_required INT           NOT NULL DEFAULT 2,
+    admin_action_days   INT             NOT NULL DEFAULT 5,
     updated_date        DATETIME2       NOT NULL DEFAULT GETDATE()
 );
 GO
 
-INSERT INTO dbo.LeavePolicy (max_sick, max_casual, max_earned, advance_days_required, admin_action_days)
-VALUES (12, 12, 15, 3, 3);
+INSERT INTO dbo.LeavePolicy (max_sick, max_casual, max_earned, max_maternity, max_paternity, advance_days_required, admin_action_days)
+VALUES (15, 12, 20, 90, 15, 2, 5);
 GO
 
 

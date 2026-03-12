@@ -234,29 +234,36 @@ export default function SalaryRequest() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="raise">Salary Raise</SelectItem>
-                                    <SelectItem value="promotion">Promotion</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Proposed Amount */}
+                        {/* Proposed Amount - PREDEFINED OPTIONS */}
                         <div className="space-y-2">
-                            <Label>Proposed Salary Amount (₹)</Label>
-                            <Input
-                                type="number"
-                                placeholder="e.g. 8000"
-                                value={form.proposed_salary}
-                                onChange={(e) => setForm({ ...form, proposed_salary: e.target.value })}
-                                className="h-11"
-                                min="0"
-                                step="100"
-                                required
-                            />
+                            <Label>Select Increment (%)</Label>
+                            <Select 
+                                value={form.proposed_salary} 
+                                onValueChange={(v) => setForm({ ...form, proposed_salary: v })}
+                            >
+                                <SelectTrigger className="h-11">
+                                    <SelectValue placeholder="Select percentage" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[5, 10, 15, 20, 25, 30].map(pct => (
+                                        <SelectItem key={pct} value={(currentSalary * (1 + pct/100)).toString()}>
+                                            {pct}% (₹{(currentSalary * (1 + pct/100)).toLocaleString()})
+                                        </SelectItem>
+                                    ))}
+                                    <SelectItem value={(currentSalary + 5000).toString()}>Fixed +₹5,000</SelectItem>
+                                    <SelectItem value={(currentSalary + 10000).toString()}>Fixed +₹10,000</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            
                             {proposedNum > 0 && (
-                                <div className={`flex items-center gap-1 text-sm font-medium ${diff >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                                    <ArrowUp className={`h-3 w-3 ${diff < 0 ? "rotate-180" : ""}`} />
-                                    {diff >= 0 ? "+" : ""}₹{diff.toLocaleString()} change from current salary
+                                <div className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+                                    <ArrowUp className="h-3 w-3" />
+                                    +₹{diff.toLocaleString()} increment from current salary
                                 </div>
                             )}
                         </div>
@@ -279,7 +286,7 @@ export default function SalaryRequest() {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={createMutation.isPending}
+                                disabled={createMutation.isPending || !form.proposed_salary}
                                 className="bg-indigo-600 hover:bg-indigo-700"
                             >
                                 {createMutation.isPending ? (
@@ -337,10 +344,18 @@ export default function SalaryRequest() {
                                     <p className="text-lg font-bold text-indigo-600">₹{selected.proposed_salary?.toLocaleString()}</p>
                                 </div>
                             </div>
+                            
+                            {selected.status === "rejected" && selected.rejection_reason && (
+                                <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl">
+                                    <p className="text-xs text-rose-500 font-bold uppercase mb-1">Rejection Reason</p>
+                                    <p className="text-sm text-rose-700 font-medium">{selected.rejection_reason}</p>
+                                </div>
+                            )}
+
                             {selected.reason && (
                                 <div>
-                                    <p className="text-xs text-slate-400">Reason</p>
-                                    <p className="text-sm text-slate-700 mt-1 p-3 bg-slate-50 rounded-lg">{selected.reason}</p>
+                                    <p className="text-xs text-slate-400">My Reason</p>
+                                    <p className="text-sm text-slate-700 mt-1 p-3 bg-white border border-slate-100 rounded-lg">{selected.reason}</p>
                                 </div>
                             )}
                             {selected.approved_by && (

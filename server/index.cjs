@@ -44,7 +44,33 @@ app.post('/api/auth/login', async (req, res) => {
         if (result.recordset.length === 0) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
-        res.json(result.recordset[0]);
+        const user = result.recordset[0];
+
+        // Automatic Yearly Increment Check for Employees
+        if (user.role === 'employee') {
+            const empResult = await query('SELECT id, base_salary, date_of_joining, updated_date FROM dbo.Employees WHERE email = @email', { email: user.email });
+            if (empResult.recordset.length > 0) {
+                const emp = empResult.recordset[0];
+                if (emp.date_of_joining) {
+                    const today = new Date();
+                    const joinDate = new Date(emp.date_of_joining);
+                    const lastUpdate = new Date(emp.updated_date);
+                    
+                    // Month/Day match AND has been at least 360 days since last update (approx 1 year) 
+                    // OR specifically check if it's a new year celebration
+                    const isAnniversary = today.getMonth() === joinDate.getMonth() && today.getDate() === joinDate.getDate();
+                    const isNotAlreadyUpdatedToday = today.toDateString() !== lastUpdate.toDateString();
+
+                    if (isAnniversary && isNotAlreadyUpdatedToday) {
+                        const newSalary = Math.round(emp.base_salary * 1.10); // 10% automatic increment
+                        await query('UPDATE dbo.Employees SET base_salary = @newSalary, updated_date = GETDATE() WHERE id = @id', { newSalary, id: emp.id });
+                        console.log(`--- AUTO INCREMENT ---> Employee ${user.email} received 10% anniversary raise to ${newSalary}`);
+                    }
+                }
+            }
+        }
+
+        res.json(user);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -53,27 +79,27 @@ app.post('/api/auth/login', async (req, res) => {
 // POST /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, full_name, role = 'employee' } = req.body;
+        const { email, password, full_name, role = 'employee', gender = 'Male' } = req.body;
         // Check if exists
         const existing = await query('SELECT id FROM dbo.Users WHERE email = @email', { email });
         if (existing.recordset.length > 0) {
             return res.status(400).json({ error: 'A user with this email already exists' });
         }
         const result = await query(
-            'INSERT INTO dbo.Users (email, password_hash, full_name, role) OUTPUT INSERTED.* VALUES (@email, @password, @full_name, @role)',
-            { email, password, full_name, role }
+            'INSERT INTO dbo.Users (email, password_hash, full_name, role, gender) OUTPUT INSERTED.* VALUES (@email, @password, @full_name, @role, @gender)',
+            { email, password, full_name, role, gender }
         );
         const user = result.recordset[0];
 
         // If the user registered as an employee, also insert them into the Employees table
         if (role === 'employee') {
             await query(
-                `INSERT INTO dbo.Employees (full_name, email, department, designation, base_salary, status) 
-                 VALUES (@full_name, @email, 'Unassigned', 'New Joiner', 0, 'active')`,
-                { full_name, email }
+                `INSERT INTO dbo.Employees (full_name, email, department, designation, base_salary, status, gender, date_of_joining) 
+                 VALUES (@full_name, @email, 'Unassigned', 'New Joiner', 0, 'active', @gender, GETDATE())`,
+                { full_name, email, gender }
             );
         }
-        res.json({ id: user.id, email: user.email, full_name: user.full_name, role: user.role });
+        res.json({ id: user.id, email: user.email, full_name: user.full_name, role: user.role, gender: user.gender });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

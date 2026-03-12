@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { appClient } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +18,14 @@ export default function EmployeeDashboard() {
     select: (data) => data?.[0],
   });
 
+  const { data: policy } = useQuery({
+    queryKey: ["leave-policy"],
+    queryFn: async () => {
+        const list = await appClient.entities.LeavePolicy.list();
+        return list?.[0] || { max_sick: 15, max_casual: 12, max_earned: 20, max_maternity: 90, max_paternity: 15 };
+    }
+  });
+
   const { data: leaves = [] } = useQuery({
     queryKey: ["my-leaves", user?.email],
     queryFn: () => appClient.entities.LeaveApplication.filter({ employee_email: user.email }, "-created_date"),
@@ -30,8 +38,27 @@ export default function EmployeeDashboard() {
     enabled: !!user?.email,
   });
 
+  const approvedLeaves = leaves.filter(l => l.status === "approved" && new Date(l.start_date).getFullYear() === new Date().getFullYear());
   const pendingLeaves = leaves.filter((l) => l.status === "pending").length;
   const latestPayslip = payslips[0];
+
+  const usedLeaves = {
+    sick: approvedLeaves.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + curr.days, 0),
+    casual: approvedLeaves.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + curr.days, 0),
+    earned: approvedLeaves.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + curr.days, 0),
+    maternity: approvedLeaves.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + curr.days, 0),
+    paternity: approvedLeaves.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + curr.days, 0),
+  };
+
+  const availableLeaves = {
+    sick: (policy?.max_sick || 15) - usedLeaves.sick,
+    casual: (policy?.max_casual || 12) - usedLeaves.casual,
+    earned: (policy?.max_earned || 20) - usedLeaves.earned,
+    maternity: (policy?.max_maternity || 90) - usedLeaves.maternity,
+    paternity: (policy?.max_paternity || 15) - usedLeaves.paternity,
+  };
+
+  const totalAvailable = availableLeaves.sick + availableLeaves.casual + availableLeaves.earned;
 
   const statusColors = {
     pending: "bg-amber-100 text-amber-700",
@@ -47,10 +74,33 @@ export default function EmployeeDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Leave Balance" value={`${employee?.leave_balance ?? 24} days`} icon={CalendarDays} color="indigo" />
+        <StatCard title="Total Available" value={`${totalAvailable} days`} icon={CalendarDays} color="indigo" subtitle="Sick + Casual + Earned" />
         <StatCard title="Pending Leaves" value={pendingLeaves} icon={Clock} color="amber" />
         <StatCard title="Total Payslips" value={payslips.length} icon={FileText} color="blue" />
         <StatCard title="Last Net Pay" value={latestPayslip ? `₹${latestPayslip.net_salary?.toLocaleString()}` : "—"} icon={IndianRupee} color="emerald" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Sick</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.sick} / {policy?.max_sick || 15}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Casual</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.casual} / {policy?.max_casual || 12}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Earned</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.earned} / {policy?.max_earned || 20}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Maternity</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.maternity} / {policy?.max_maternity || 90}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Paternity</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.paternity} / {policy?.max_paternity || 15}</p>
+          </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

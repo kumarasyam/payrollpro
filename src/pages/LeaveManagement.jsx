@@ -9,8 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle } from "lucide-react";
-import { format, differenceInDays, addDays } from "date-fns";
+import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle, ExternalLink } from "lucide-react";
+import { format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 
 const statusColors = {
@@ -26,6 +26,14 @@ export default function LeaveManagement() {
   const [remarks, setRemarks] = useState("");
   const qc = useQueryClient();
 
+  const { data: policy } = useQuery({
+    queryKey: ["leave-policy"],
+    queryFn: async () => {
+      const list = await appClient.entities.LeavePolicy.list();
+      return list?.[0] || { max_sick: 15, max_casual: 12, max_earned: 20, max_maternity: 90, max_paternity: 15, advance_days_required: 2, admin_action_days: 5 };
+    }
+  });
+
   const { data: leaves = [], isLoading } = useQuery({
     queryKey: ["leaves"],
     queryFn: () => appClient.entities.LeaveApplication.list("-created_date"),
@@ -33,12 +41,37 @@ export default function LeaveManagement() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => appClient.entities.LeaveApplication.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["leaves"] }); setSelected(null); setRemarks(""); },
+    onSuccess: () => { 
+        qc.invalidateQueries({ queryKey: ["leaves"] }); 
+        setSelected(null); 
+        setRemarks(""); 
+    },
   });
+
+  // Auto-reject overdue requests
+  React.useEffect(() => {
+    if (leaves.length > 0 && policy) {
+      const overtimeLeaves = leaves.filter(l => {
+        if (l.status !== 'pending') return false;
+        const diff = differenceInDays(new Date(), new Date(l.created_date || new Date()));
+        return diff >= policy.admin_action_days;
+      });
+      
+      overtimeLeaves.forEach(l => {
+        updateMutation.mutate({ 
+          id: l.id, 
+          data: { 
+              status: 'rejected', 
+              remarks: `Auto-rejected: Exceeded admin review time limit (${policy.admin_action_days} days)` 
+          } 
+        });
+      });
+    }
+  }, [leaves, policy]);
 
   const handleAction = (status) => {
     if (status === "rejected" && !remarks.trim()) {
-      toast.error("Please provide a reason for rejection in the Admin Remarks field.");
+      toast.error("Please provide a reason for rejection.");
       return;
     }
     updateMutation.mutate({ id: selected.id, data: { status, remarks: remarks } });
@@ -99,7 +132,9 @@ export default function LeaveManagement() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="capitalize text-slate-600">{leave.leave_type?.replace(/_/g, " ")}</span>
+                      <span className="capitalize text-slate-600 font-medium">
+                        {leave.leave_type?.replace(/_/g, " ")}
+                      </span>
                     </TableCell>
                     <TableCell className="text-sm text-slate-600">
                       {leave.start_date && format(new Date(leave.start_date), "MMM d")} - {leave.end_date && format(new Date(leave.end_date), "MMM d, yyyy")}
@@ -108,9 +143,8 @@ export default function LeaveManagement() {
                     <TableCell>
                       <div className="flex flex-col gap-1 items-start">
                         <Badge className={`${statusColors[leave.status]} border-0 text-xs`}>{leave.status}</Badge>
-                        {leave.status === "pending" && (
+                        {leave.status === "pending" && policy && (
                           <span className={`text-[10px] font-medium ${(() => {
-                            const policy = JSON.parse(localStorage.getItem("payrollpro_leave_policy")) || { admin_action_days: 7 };
                             const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
                             const daysLeft = policy.admin_action_days - diff;
                             if (daysLeft < 0) return "text-rose-600 flex items-center gap-0.5";
@@ -118,7 +152,6 @@ export default function LeaveManagement() {
                             return "text-slate-400";
                           })()}`}>
                             {(() => {
-                              const policy = JSON.parse(localStorage.getItem("payrollpro_leave_policy")) || { admin_action_days: 7 };
                               const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
                               const daysLeft = policy.admin_action_days - diff;
                               return daysLeft < 0 ? <><AlertTriangle className="h-3 w-3" /> Overdue by {Math.abs(daysLeft)}d</> : `${daysLeft} days left to act`;
@@ -166,22 +199,42 @@ export default function LeaveManagement() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">From</p>
-                  <p className="text-slate-700">{selected.start_date}</p>
+                  <p className="text-sm font-medium">{selected.start_date}</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">To</p>
-                  <p className="text-slate-700">{selected.end_date}</p>
+                  <p className="text-sm font-medium">{selected.end_date}</p>
                 </div>
               </div>
+              
+              {selected.document_url && (
+                <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                    <p className="text-xs text-indigo-500 font-bold uppercase mb-1">Supporting Document</p>
+                    <a href={selected.document_url} target="_blank" rel="noreferrer" className="text-sm text-indigo-600 hover:underline flex items-center gap-2">
+                        <ExternalLink className="h-3 w-3" /> View Document
+                    </a>
+                </div>
+              )}
+
               <div>
                 <p className="text-xs text-slate-400">Reason</p>
                 <p className="text-sm text-slate-700 mt-1 p-3 bg-slate-50 rounded-lg">{selected.reason}</p>
               </div>
               {selected.status === "pending" && (
                 <div>
-                  <p className="text-xs text-slate-400 mb-1">Admin Remarks</p>
-                  <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional remarks..." />
+                  <p className="text-xs text-slate-400 mb-1 font-bold">Admin Remarks / Rejection Reason</p>
+                  <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Provide a reason for rejection or approval remarks..." />
                 </div>
+              )}
+              {(selected.status === "rejected" || selected.status === "approved") && selected.remarks && (
+                  <div>
+                    <p className={`text-xs ${selected.status === 'rejected' ? 'text-rose-500' : 'text-emerald-500'} font-bold uppercase mb-1`}>
+                        {selected.status === 'rejected' ? 'Rejection Reason' : 'Admin Remarks'}
+                    </p>
+                    <p className={`text-sm ${selected.status === 'rejected' ? 'text-rose-700 bg-rose-50 border-rose-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'} p-3 rounded-lg border`}>
+                        {selected.remarks}
+                    </p>
+                  </div>
               )}
             </div>
           )}
@@ -196,10 +249,7 @@ export default function LeaveManagement() {
                 </Button>
               </div>
             ) : (
-              <Badge className={`${statusColors[selected?.status]} border-0 text-sm px-4 py-2`}>
-                {selected?.status === "approved" ? "Approved" : "Rejected"}
-                {selected?.remarks && ` — ${selected.remarks}`}
-              </Badge>
+              <Button variant="outline" onClick={() => setSelected(null)} className="w-full">Close</Button>
             )}
           </DialogFooter>
         </DialogContent>

@@ -125,6 +125,9 @@ const AuthenticatedApp = () => {
       <Route path="/MyAttendance" element={
         <Layout currentPageName="MyAttendance"><MyAttendance /></Layout>
       } />
+      <Route path="/LeavePolicy" element={
+        <Layout currentPageName="LeavePolicy"><LeavePolicy /></Layout>
+      } />
       {/* Redirect admin routes to employee dashboard */}
       <Route path="/Dashboard" element={<Navigate to="/EmployeeDashboard" replace />} />
       <Route path="/Employees" element={<Navigate to="/EmployeeDashboard" replace />} />

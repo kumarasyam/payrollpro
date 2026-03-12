@@ -1,4 +1,4 @@
-﻿import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { appClient } from '@/api/base44Client';
 
 const AuthContext = createContext();
@@ -40,10 +40,10 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const register = useCallback(async ({ email, password, full_name, role }) => {
+  const register = useCallback(async ({ email, password, full_name, role, gender }) => {
     setAuthError(null);
     try {
-      const newUser = await appClient.auth.register({ email, password, full_name, role });
+      const newUser = await appClient.auth.register({ email, password, full_name, role, gender });
       setUser(newUser);
       setIsAuthenticated(true);
       return newUser;

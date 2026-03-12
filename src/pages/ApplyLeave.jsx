@@ -51,14 +51,14 @@ export default function ApplyLeave() {
   });
 
   const [form, setForm] = useState({
-    leave_type: "", start_date: "", end_date: "", reason: ""
+    leave_type: "", start_date: "", end_date: "", reason: "", document_url: ""
   });
 
   const createMutation = useMutation({
     mutationFn: (data) => appClient.entities.LeaveApplication.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-leaves"] });
-      setForm({ leave_type: "", start_date: "", end_date: "", reason: "" });
+      setForm({ leave_type: "", start_date: "", end_date: "", reason: "", document_url: "" });
       toast.success("Leave application submitted successfully");
     },
     onError: (err) => {
@@ -76,6 +76,14 @@ export default function ApplyLeave() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const isLongSick = form.leave_type === 'sick' && days >= 3;
+    const isMaternity = form.leave_type === 'maternity';
+
+    if ((isLongSick || isMaternity) && !form.document_url) {
+      toast.error("Supporting document/link is required for " + (isMaternity ? "Maternity" : "Long Sick") + " leave.");
+      return;
+    }
 
     if (!form.start_date || !form.end_date) {
       toast.error("Please select both start and end dates");
@@ -97,7 +105,7 @@ export default function ApplyLeave() {
       return;
     }
 
-    const days = differenceInDays(endDate, startDate) + 1;
+    const daysCount = differenceInDays(endDate, startDate) + 1;
 
     // Time-bound rules validation
     if (policy.advance_days_required > 0) {
@@ -119,7 +127,7 @@ export default function ApplyLeave() {
     const maxDaysKey = `max_${form.leave_type}`;
     const maxDays = policy[maxDaysKey] !== undefined ? policy[maxDaysKey] : 999;
 
-    if (usedDays + days > maxDays) {
+    if (usedDays + daysCount > maxDays) {
       toast.error(`Limit exceeded! You can take up to ${maxDays} ${form.leave_type} leaves per year. (Used: ${usedDays})`);
       return;
     }
@@ -136,8 +144,9 @@ export default function ApplyLeave() {
       leave_type: form.leave_type,
       start_date: form.start_date,
       end_date: form.end_date,
-      days,
+      days: daysCount,
       reason: form.reason || "",
+      document_url: form.document_url || "",
       status: "pending",
     });
   };
@@ -146,11 +155,33 @@ export default function ApplyLeave() {
     ? Math.max(differenceInDays(new Date(form.end_date), new Date(form.start_date)) + 1, 0)
     : 0;
 
+  const usedLeaves = {
+    sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + curr.days, 0),
+    casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + curr.days, 0),
+    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + curr.days, 0),
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Apply for Leave</h1>
-        <p className="text-slate-500 mt-1">Leave balance: <span className="font-semibold text-indigo-600">{employee?.leave_balance ?? 24} days</span></p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Apply for Leave</h1>
+          <p className="text-slate-500 mt-1">Submit your request for balance review</p>
+        </div>
+        <div className="flex gap-4 text-sm">
+            <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Sick</p>
+                <p className="font-bold text-slate-700">{usedLeaves.sick} / {policy.max_sick}</p>
+            </div>
+            <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Casual</p>
+                <p className="font-bold text-slate-700">{usedLeaves.casual} / {policy.max_casual}</p>
+            </div>
+            <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Earned</p>
+                <p className="font-bold text-slate-700">{usedLeaves.earned} / {policy.max_earned}</p>
+            </div>
+        </div>
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -189,11 +220,28 @@ export default function ApplyLeave() {
             {days > 0 && (
               <p className="text-sm text-indigo-600 font-medium">Duration: {days} day{days > 1 ? "s" : ""}</p>
             )}
+            
+            {(form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 3)) && (
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-2">
+                <Label className="text-amber-800 flex items-center gap-2">
+                    <Send className="h-4 w-4" /> 
+                    Supporting Document (Proof Link)
+                </Label>
+                <p className="text-xs text-amber-600">Maternity and sick leaves (3+ days) require proof. Please provide a link to your medical certificate.</p>
+                <Input 
+                    placeholder="https://example.com/document.pdf" 
+                    value={form.document_url} 
+                    onChange={(e) => setForm({ ...form, document_url: e.target.value })}
+                    className="bg-white border-amber-200 focus:ring-amber-500"
+                />
+              </div>
+            )}
+
             <div>
               <Label>Reason</Label>
               <Textarea value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Describe your reason for leave..." className="h-24" />
             </div>
-            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={!form.leave_type || !form.start_date || !form.end_date || !form.reason}>
+            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={createMutation.isPending || !form.leave_type || !form.start_date || !form.end_date || !form.reason}>
               <Send className="h-4 w-4 mr-2" /> Submit Application
             </Button>
           </form>

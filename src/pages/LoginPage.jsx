@@ -18,6 +18,7 @@ export default function LoginPage() {
         password: "",
         full_name: "",
         role: "employee",
+        gender: "Male"
     });
 
     const handleSubmit = async (e) => {
@@ -42,6 +43,7 @@ export default function LoginPage() {
                     password: form.password,
                     full_name: form.full_name,
                     role: form.role,
+                    gender: form.gender,
                 });
             } else {
                 await login(form.email, form.password);
@@ -163,6 +165,28 @@ export default function LoginPage() {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Gender (Register only) */}
+                            {isRegister && (
+                                <div className="space-y-2">
+                                    <Label className="text-slate-700 text-sm font-medium">Gender</Label>
+                                    <div className="flex gap-2">
+                                        {["Male", "Female", "Other"].map((g) => (
+                                            <button
+                                                key={g}
+                                                type="button"
+                                                onClick={() => setForm({ ...form, gender: g })}
+                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition-all duration-200 ${form.gender === g
+                                                    ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm"
+                                                    : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+                                                    }`}
+                                            >
+                                                {g}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Role (Register only) */}
                             {isRegister && (

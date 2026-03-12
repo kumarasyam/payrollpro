@@ -1,13 +1,16 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, XCircle, Eye, ArrowUp, ArrowDown } from "lucide-react";
+import { toast } from "sonner";
 
 const statusColors = {
   pending: "bg-amber-100 text-amber-700",
@@ -18,6 +21,7 @@ const statusColors = {
 export default function SalaryApprovals() {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const qc = useQueryClient();
 
   const { data: approvals = [], isLoading } = useQuery({
@@ -27,11 +31,27 @@ export default function SalaryApprovals() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => appClient.entities.SalaryApproval.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["approvals"] }); setSelected(null); },
+    onSuccess: () => { 
+        qc.invalidateQueries({ queryKey: ["approvals"] }); 
+        setSelected(null); 
+        setRejectionReason("");
+        toast.success("Action completed successfully");
+    },
   });
 
   const handleAction = (status) => {
-    updateMutation.mutate({ id: selected.id, data: { status, approved_by: "Admin" } });
+    if (status === "rejected" && !rejectionReason.trim()) {
+        toast.error("Please provide a rejection reason");
+        return;
+    }
+    updateMutation.mutate({ 
+        id: selected.id, 
+        data: { 
+            status, 
+            approved_by: "Admin",
+            rejection_reason: status === "rejected" ? rejectionReason : null
+        } 
+    });
   };
 
   const filtered = approvals.filter((a) => filter === "all" || a.status === filter);
@@ -101,7 +121,7 @@ export default function SalaryApprovals() {
                         <Badge className={`${statusColors[item.status]} border-0 text-xs`}>{item.status}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setSelected(item)}>
+                        <Button variant="ghost" size="sm" onClick={() => { setSelected(item); setRejectionReason(""); }}>
                           <Eye className="h-4 w-4 mr-1" /> View
                         </Button>
                       </TableCell>
@@ -115,7 +135,7 @@ export default function SalaryApprovals() {
       </Card>
 
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Salary Change Details</DialogTitle>
           </DialogHeader>
@@ -152,9 +172,28 @@ export default function SalaryApprovals() {
               </div>
               {selected.reason && (
                 <div>
-                  <p className="text-xs text-slate-400">Reason</p>
-                  <p className="text-sm text-slate-700 mt-1 p-3 bg-slate-50 rounded-lg">{selected.reason}</p>
+                  <p className="text-xs text-slate-400">Employee Reason</p>
+                  <p className="text-sm text-slate-700 mt-1 p-3 bg-slate-50 rounded-lg whitespace-pre-wrap">{selected.reason}</p>
                 </div>
+              )}
+              
+              {selected.status === "pending" && (
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-rose-600 font-bold uppercase text-[10px]">Rejection Reason (Required for rejection)</Label>
+                  <Textarea 
+                    placeholder="Enter reason for rejection..." 
+                    value={rejectionReason} 
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    className="h-20"
+                  />
+                </div>
+              )}
+
+              {selected.status === "rejected" && selected.rejection_reason && (
+                  <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg">
+                      <p className="text-xs text-rose-500 font-bold uppercase mb-1">Rejection Reason</p>
+                      <p className="text-sm text-rose-700">{selected.rejection_reason}</p>
+                  </div>
               )}
             </div>
           )}
@@ -169,7 +208,9 @@ export default function SalaryApprovals() {
                 </Button>
               </div>
             ) : (
-              <Badge className={`${statusColors[selected?.status]} border-0 text-sm px-4 py-2`}>{selected?.status}</Badge>
+                <div className="w-full flex justify-center">
+                    <Badge className={`${statusColors[selected?.status]} border-0 text-sm px-6 py-2`}>{selected?.status}</Badge>
+                </div>
             )}
           </DialogFooter>
         </DialogContent>
