@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,10 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, Send, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { CalendarDays, Send, Clock, CheckCircle2, XCircle, Upload, FileImage, X } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+
+// Fixed company leave policy limits
+const FIXED_POLICY = {
+  max_sick: 15,
+  max_casual: 12,
+  max_earned: 20,
+  max_maternity: 150,
+  max_paternity: 15,
+  advance_days_required: 2,
+  admin_action_days: 5,
+};
 
 const statusIcons = {
   pending: <Clock className="h-4 w-4" />,
@@ -28,20 +39,13 @@ const statusColors = {
 export default function ApplyLeave() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const fileInputRef = useRef(null);
 
   const { data: employee } = useQuery({
     queryKey: ["my-employee", user?.email],
     queryFn: () => appClient.entities.Employee.filter({ email: user.email }),
     enabled: !!user?.email,
     select: (data) => data?.[0],
-  });
-
-  const { data: policy = { max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3, admin_action_days: 7 } } = useQuery({
-    queryKey: ["leave-policy"],
-    queryFn: async () => {
-      const list = await appClient.entities.LeavePolicy.list();
-      return list?.[0] || { max_sick: 12, max_casual: 12, max_earned: 15, advance_days_required: 3, admin_action_days: 7 };
-    }
   });
 
   const { data: leaves = [] } = useQuery({
@@ -51,14 +55,17 @@ export default function ApplyLeave() {
   });
 
   const [form, setForm] = useState({
-    leave_type: "", start_date: "", end_date: "", reason: "", document_url: ""
+    leave_type: "", start_date: "", end_date: "", reason: "",
   });
+  const [uploadedFile, setUploadedFile] = useState(null); // { name, type, base64 }
+  const [uploading, setUploading] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: (data) => appClient.entities.LeaveApplication.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-leaves"] });
-      setForm({ leave_type: "", start_date: "", end_date: "", reason: "", document_url: "" });
+      setForm({ leave_type: "", start_date: "", end_date: "", reason: "" });
+      setUploadedFile(null);
       toast.success("Leave application submitted successfully");
     },
     onError: (err) => {
@@ -74,14 +81,53 @@ export default function ApplyLeave() {
     },
   });
 
+  // ── File Upload Handler ──────────────────────────────────────
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      toast.error("Only JPG, PNG, GIF, or PDF files are allowed.");
+      return;
+    }
+    // Validate size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size must be under 5MB.");
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setUploadedFile({
+        name: file.name,
+        type: file.type,
+        base64: ev.target.result, // data:image/png;base64,...
+      });
+      setUploading(false);
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read file. Please try again.");
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ── Submit Handler ───────────────────────────────────────────
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const days = form.start_date && form.end_date
+      ? Math.max(differenceInDays(new Date(form.end_date), new Date(form.start_date)) + 1, 0)
+      : 0;
 
     const isLongSick = form.leave_type === 'sick' && days >= 3;
     const isMaternity = form.leave_type === 'maternity';
 
-    if ((isLongSick || isMaternity) && !form.document_url) {
-      toast.error("Supporting document/link is required for " + (isMaternity ? "Maternity" : "Long Sick") + " leave.");
+    if ((isLongSick || isMaternity) && !uploadedFile) {
+      toast.error(`Supporting document is required for ${isMaternity ? "Maternity" : "Sick (3+ days)"} leave.`);
       return;
     }
 
@@ -95,11 +141,6 @@ export default function ApplyLeave() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      toast.error("Invalid dates selected");
-      return;
-    }
-
     if (endDate < startDate) {
       toast.error("End date cannot be before start date");
       return;
@@ -107,16 +148,16 @@ export default function ApplyLeave() {
 
     const daysCount = differenceInDays(endDate, startDate) + 1;
 
-    // Time-bound rules validation
-    if (policy.advance_days_required > 0) {
+    // Advance days check
+    if (FIXED_POLICY.advance_days_required > 0) {
       const advanceDays = differenceInDays(startDate, today);
-      if (advanceDays < policy.advance_days_required) {
-        toast.error(`Policy requires applying at least ${policy.advance_days_required} days in advance.`);
+      if (advanceDays < FIXED_POLICY.advance_days_required) {
+        toast.error(`Policy requires applying at least ${FIXED_POLICY.advance_days_required} days in advance.`);
         return;
       }
     }
 
-    // Leave balance per type validation
+    // Leave balance validation
     const currentYear = new Date().getFullYear();
     const sameTypeLeaves = leaves.filter(l =>
       l.leave_type === form.leave_type &&
@@ -125,15 +166,10 @@ export default function ApplyLeave() {
     );
     const usedDays = sameTypeLeaves.reduce((sum, l) => sum + (l.days || 0), 0);
     const maxDaysKey = `max_${form.leave_type}`;
-    const maxDays = policy[maxDaysKey] !== undefined ? policy[maxDaysKey] : 999;
+    const maxDays = FIXED_POLICY[maxDaysKey] !== undefined ? FIXED_POLICY[maxDaysKey] : 999;
 
     if (usedDays + daysCount > maxDays) {
-      toast.error(`Limit exceeded! You can take up to ${maxDays} ${form.leave_type} leaves per year. (Used: ${usedDays})`);
-      return;
-    }
-
-    if (!employee?.full_name && !user?.full_name) {
-      toast.error("Employee information not found. Please try again or refresh.");
+      toast.error(`Limit exceeded! You can take up to ${maxDays} ${form.leave_type} leave days per year. (Used: ${usedDays})`);
       return;
     }
 
@@ -146,7 +182,7 @@ export default function ApplyLeave() {
       end_date: form.end_date,
       days: daysCount,
       reason: form.reason || "",
-      document_url: form.document_url || "",
+      document_url: uploadedFile ? uploadedFile.base64 : "",
       status: "pending",
     });
   };
@@ -156,10 +192,12 @@ export default function ApplyLeave() {
     : 0;
 
   const usedLeaves = {
-    sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + curr.days, 0),
-    casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + curr.days, 0),
-    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + curr.days, 0),
+    sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
+
+  const needsDocument = form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 3);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -169,18 +207,18 @@ export default function ApplyLeave() {
           <p className="text-slate-500 mt-1">Submit your request for balance review</p>
         </div>
         <div className="flex gap-4 text-sm">
-            <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Sick</p>
-                <p className="font-bold text-slate-700">{usedLeaves.sick} / {policy.max_sick}</p>
-            </div>
-            <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Casual</p>
-                <p className="font-bold text-slate-700">{usedLeaves.casual} / {policy.max_casual}</p>
-            </div>
-            <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Earned</p>
-                <p className="font-bold text-slate-700">{usedLeaves.earned} / {policy.max_earned}</p>
-            </div>
+          <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Sick</p>
+            <p className="font-bold text-slate-700">{usedLeaves.sick} / {FIXED_POLICY.max_sick}</p>
+          </div>
+          <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Casual</p>
+            <p className="font-bold text-slate-700">{usedLeaves.casual} / {FIXED_POLICY.max_casual}</p>
+          </div>
+          <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Earned</p>
+            <p className="font-bold text-slate-700">{usedLeaves.earned} / {FIXED_POLICY.max_earned}</p>
+          </div>
         </div>
       </div>
 
@@ -202,7 +240,7 @@ export default function ApplyLeave() {
                     <SelectItem value="sick">Sick Leave</SelectItem>
                     <SelectItem value="casual">Casual Leave</SelectItem>
                     <SelectItem value="earned">Earned Leave</SelectItem>
-                    <SelectItem value="maternity">Maternity Leave</SelectItem>
+                    <SelectItem value="maternity">Maternity Leave (150 days)</SelectItem>
                     <SelectItem value="paternity">Paternity Leave</SelectItem>
                     <SelectItem value="unpaid">Unpaid Leave</SelectItem>
                   </SelectContent>
@@ -217,37 +255,110 @@ export default function ApplyLeave() {
                 <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
               </div>
             </div>
+
             {days > 0 && (
               <p className="text-sm text-indigo-600 font-medium">Duration: {days} day{days > 1 ? "s" : ""}</p>
             )}
-            
-            {(form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 3)) && (
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-2">
-                <Label className="text-amber-800 flex items-center gap-2">
-                    <Send className="h-4 w-4" /> 
-                    Supporting Document (Proof Link)
+
+            {/* Document Upload Section */}
+            {needsDocument && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+                <Label className="text-amber-800 font-semibold flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Supporting Document (Required)
                 </Label>
-                <p className="text-xs text-amber-600">Maternity and sick leaves (3+ days) require proof. Please provide a link to your medical certificate.</p>
-                <Input 
-                    placeholder="https://example.com/document.pdf" 
-                    value={form.document_url} 
-                    onChange={(e) => setForm({ ...form, document_url: e.target.value })}
-                    className="bg-white border-amber-200 focus:ring-amber-500"
+                <p className="text-xs text-amber-600">
+                  {form.leave_type === 'maternity'
+                    ? "Maternity leave requires a medical certificate or relevant document."
+                    : "Sick leave of 3+ days requires a medical certificate."}
+                  &nbsp;Upload JPG, PNG, GIF or PDF (max 5MB).
+                </p>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,application/pdf"
+                  className="hidden"
+                  onChange={handleFileChange}
                 />
+
+                {!uploadedFile ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full border-2 border-dashed border-amber-300 bg-white rounded-xl p-6 flex flex-col items-center gap-2 hover:border-amber-400 hover:bg-amber-50 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {uploading ? (
+                      <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <FileImage className="h-8 w-8 text-amber-400" />
+                    )}
+                    <span className="text-sm font-medium text-amber-700">
+                      {uploading ? "Reading file..." : "Click to upload a file"}
+                    </span>
+                    <span className="text-xs text-amber-500">JPG, PNG, GIF or PDF · Max 5MB</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 p-3 bg-white border border-amber-200 rounded-xl">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                      <FileImage className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{uploadedFile.name}</p>
+                      <p className="text-xs text-slate-400">
+                        {uploadedFile.type.startsWith('image/') ? 'Image' : 'PDF'} · Ready to submit
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setUploadedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      className="p-1 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Preview for images */}
+                {uploadedFile && uploadedFile.type.startsWith('image/') && (
+                  <div className="mt-2 rounded-lg overflow-hidden border border-amber-200 max-h-48">
+                    <img src={uploadedFile.base64} alt="Preview" className="w-full object-contain max-h-48 bg-white" />
+                  </div>
+                )}
               </div>
             )}
 
             <div>
               <Label>Reason</Label>
-              <Textarea value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Describe your reason for leave..." className="h-24" />
+              <Textarea
+                value={form.reason}
+                onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                placeholder="Describe your reason for leave..."
+                className="h-24"
+              />
             </div>
-            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={createMutation.isPending || !form.leave_type || !form.start_date || !form.end_date || !form.reason}>
+
+            <Button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700"
+              disabled={
+                createMutation.isPending ||
+                !form.leave_type ||
+                !form.start_date ||
+                !form.end_date ||
+                !form.reason ||
+                (needsDocument && !uploadedFile)
+              }
+            >
               <Send className="h-4 w-4 mr-2" /> Submit Application
             </Button>
           </form>
         </CardContent>
       </Card>
 
+      {/* Leave History */}
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">My Leave History</CardTitle>
@@ -269,6 +380,12 @@ export default function ApplyLeave() {
                       <p className="text-xs text-slate-500 mt-1">{leave.reason}</p>
                       {leave.remarks && (
                         <p className="text-xs text-slate-500 mt-1 italic">Admin: {leave.remarks}</p>
+                      )}
+                      {/* Show document indicator */}
+                      {leave.document_url && (
+                        <span className="inline-flex items-center gap-1 text-xs text-indigo-500 mt-1">
+                          <FileImage className="h-3 w-3" /> Document attached
+                        </span>
                       )}
                     </div>
                   </div>

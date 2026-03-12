@@ -9,9 +9,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle, ExternalLink } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle, FileImage } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
+
+// Fixed company policy (mirrors LeavePolicy.jsx constants)
+const FIXED_POLICY = {
+  max_sick: 15, max_casual: 12, max_earned: 20,
+  max_maternity: 150, max_paternity: 15,
+  advance_days_required: 2, admin_action_days: 5,
+};
 
 const statusColors = {
   pending: "bg-amber-100 text-amber-700",
@@ -26,14 +33,7 @@ export default function LeaveManagement() {
   const [remarks, setRemarks] = useState("");
   const qc = useQueryClient();
 
-  const { data: policy } = useQuery({
-    queryKey: ["leave-policy"],
-    queryFn: async () => {
-      const list = await appClient.entities.LeavePolicy.list();
-      return list?.[0] || { max_sick: 15, max_casual: 12, max_earned: 20, max_maternity: 90, max_paternity: 15, advance_days_required: 2, admin_action_days: 5 };
-    }
-  });
-
+  const policy = FIXED_POLICY;
   const { data: leaves = [], isLoading } = useQuery({
     queryKey: ["leaves"],
     queryFn: () => appClient.entities.LeaveApplication.list("-created_date"),
@@ -209,10 +209,26 @@ export default function LeaveManagement() {
               
               {selected.document_url && (
                 <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                    <p className="text-xs text-indigo-500 font-bold uppercase mb-1">Supporting Document</p>
-                    <a href={selected.document_url} target="_blank" rel="noreferrer" className="text-sm text-indigo-600 hover:underline flex items-center gap-2">
-                        <ExternalLink className="h-3 w-3" /> View Document
+                  <p className="text-xs text-indigo-500 font-bold uppercase mb-2">Supporting Document / Proof</p>
+                  {selected.document_url.startsWith('data:image/') ? (
+                    <img
+                      src={selected.document_url}
+                      alt="Proof document"
+                      className="w-full max-h-64 object-contain rounded-lg border border-indigo-100 bg-white"
+                    />
+                  ) : selected.document_url.startsWith('data:application/pdf') ? (
+                    <a
+                      href={selected.document_url}
+                      download={`proof_${selected.employee_name?.replace(' ', '_')}.pdf`}
+                      className="text-sm text-indigo-600 hover:underline flex items-center gap-2"
+                    >
+                      <FileImage className="h-4 w-4" /> Download PDF Document
                     </a>
+                  ) : (
+                    <a href={selected.document_url} target="_blank" rel="noreferrer" className="text-sm text-indigo-600 hover:underline flex items-center gap-2">
+                      <FileImage className="h-3 w-3" /> View Document
+                    </a>
+                  )}
                 </div>
               )}
 

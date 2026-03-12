@@ -1,197 +1,158 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Settings, Save } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { appClient } from "@/api/base44Client";
-import { useAuth } from "@/lib/AuthContext";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Settings, Calendar, Clock, Users, Baby, UserCheck } from "lucide-react";
+
+// ── Fixed Company Leave Policy ─────────────────────────────────────────────────
+// These values are company-defined and cannot be changed by any user.
+const FIXED_POLICY = {
+    max_sick: 15,
+    max_casual: 12,
+    max_earned: 20,
+    max_maternity: 150,   // 5 months
+    max_paternity: 15,
+    advance_days_required: 2,
+    admin_action_days: 5,
+};
+
+const policyItems = [
+    {
+        key: "max_sick",
+        label: "Sick Leave",
+        icon: Clock,
+        color: "bg-rose-50 text-rose-600",
+        iconColor: "text-rose-500",
+        description: "Medical illness or injury",
+        unit: "days/year",
+    },
+    {
+        key: "max_casual",
+        label: "Casual Leave",
+        icon: Calendar,
+        color: "bg-amber-50 text-amber-600",
+        iconColor: "text-amber-500",
+        description: "Personal or urgent errands",
+        unit: "days/year",
+    },
+    {
+        key: "max_earned",
+        label: "Earned Leave",
+        icon: UserCheck,
+        color: "bg-emerald-50 text-emerald-600",
+        iconColor: "text-emerald-500",
+        description: "Accrued over service period",
+        unit: "days/year",
+    },
+    {
+        key: "max_maternity",
+        label: "Maternity Leave",
+        icon: Baby,
+        color: "bg-pink-50 text-pink-600",
+        iconColor: "text-pink-500",
+        description: "For new mothers (≈ 5 months)",
+        unit: "days",
+    },
+    {
+        key: "max_paternity",
+        label: "Paternity Leave",
+        icon: Users,
+        color: "bg-blue-50 text-blue-600",
+        iconColor: "text-blue-500",
+        description: "For new fathers",
+        unit: "days",
+    },
+];
+
+const ruleItems = [
+    {
+        label: "Advance Application Required",
+        value: `${FIXED_POLICY.advance_days_required} days`,
+        description: "Apply this many days before the leave start date.",
+    },
+    {
+        label: "Auto-Rejection Time Limit",
+        value: `${FIXED_POLICY.admin_action_days} days`,
+        description: "Pending requests auto-rejected if admin doesn't act within this limit.",
+    },
+];
 
 export default function LeavePolicy() {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const queryClient = useQueryClient();
-    const isAdmin = user?.role === 'admin';
-
-    const { data: policy, isLoading } = useQuery({
-        queryKey: ["leave-policy"],
-        queryFn: async () => {
-            const list = await appClient.entities.LeavePolicy.list();
-            return list?.[0] || { 
-                max_sick: 15, 
-                max_casual: 12, 
-                max_earned: 20, 
-                max_maternity: 90, 
-                max_paternity: 15, 
-                advance_days_required: 2, 
-                admin_action_days: 5 
-            };
-        }
-    });
-
-    const updateMutation = useMutation({
-        mutationFn: async (newData) => {
-            if (policy?.id) {
-                return await appClient.entities.LeavePolicy.update(policy.id, newData);
-            } else {
-                return await appClient.entities.LeavePolicy.create(newData);
-            }
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["leave-policy"] });
-            toast({ title: "Success", description: "Leave policy updated successfully" });
-        }
-    });
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!isAdmin) return;
-        const formData = new FormData(e.target);
-        const data = {
-            max_sick: parseInt(formData.get("max_sick")),
-            max_casual: parseInt(formData.get("max_casual")),
-            max_earned: parseInt(formData.get("max_earned")),
-            max_maternity: parseInt(formData.get("max_maternity")),
-            max_paternity: parseInt(formData.get("max_paternity")),
-            advance_days_required: parseInt(formData.get("advance_days_required")),
-            admin_action_days: parseInt(formData.get("admin_action_days")),
-        };
-        updateMutation.mutate(data);
-    };
-
-    if (isLoading) return <div className="p-8 text-center text-slate-500">Loading policy...</div>;
-
-    const currentPolicy = policy || {
-        max_sick: 15, 
-        max_casual: 12, 
-        max_earned: 20, 
-        max_maternity: 90, 
-        max_paternity: 15, 
-        advance_days_required: 2, 
-        admin_action_days: 5
-    };
-
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Leave Policy Settings</h1>
-                    <p className="text-slate-500 mt-1">Define company rules and limits for employee leaves</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Leave Policy</h1>
+                    <p className="text-slate-500 mt-1">Company-defined leave entitlements and rules</p>
                 </div>
-                {isAdmin && (
-                    <Button type="submit" disabled={updateMutation.isPending} className="gap-2">
-                        <Save className="h-4 w-4" />
-                        Save Changes
-                    </Button>
-                )}
+                <Badge className="bg-indigo-100 text-indigo-700 border-0 text-xs px-3 py-1">
+                    Company Fixed Policy
+                </Badge>
             </div>
 
+            {/* Annual Leave Limits */}
             <Card className="border-0 shadow-sm">
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Settings className="h-5 w-5 text-indigo-500" />
-                        Annual Leave Limits
+                        Annual Leave Entitlements
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <Label>Max Sick Leaves</Label>
-                            <Input
-                                name="max_sick"
-                                type="number"
-                                min="0"
-                                defaultValue={currentPolicy.max_sick}
-                                readOnly={!isAdmin}
-                                className={!isAdmin ? "bg-slate-50 cursor-not-allowed" : ""}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Max Casual Leaves</Label>
-                            <Input
-                                name="max_casual"
-                                type="number"
-                                min="0"
-                                defaultValue={currentPolicy.max_casual}
-                                readOnly={!isAdmin}
-                                className={!isAdmin ? "bg-slate-50 cursor-not-allowed" : ""}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Max Earned Leaves</Label>
-                            <Input
-                                name="max_earned"
-                                type="number"
-                                min="0"
-                                defaultValue={currentPolicy.max_earned}
-                                readOnly={!isAdmin}
-                                className={!isAdmin ? "bg-slate-50 cursor-not-allowed" : ""}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Max Maternity Leaves</Label>
-                            <Input
-                                name="max_maternity"
-                                type="number"
-                                min="0"
-                                defaultValue={currentPolicy.max_maternity}
-                                readOnly={!isAdmin}
-                                className={!isAdmin ? "bg-slate-50 cursor-not-allowed" : ""}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Max Paternity Leaves</Label>
-                            <Input
-                                name="max_paternity"
-                                type="number"
-                                min="0"
-                                defaultValue={currentPolicy.max_paternity}
-                                readOnly={!isAdmin}
-                                className={!isAdmin ? "bg-slate-50 cursor-not-allowed" : ""}
-                            />
-                        </div>
+                <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {policyItems.map(({ key, label, icon: Icon, color, iconColor, description, unit }) => (
+                            <div key={key} className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-4">
+                                <div className={`h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
+                                    <Icon className={`h-5 w-5 ${iconColor}`} />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-slate-800 text-sm">{label}</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+                                    <p className="text-2xl font-bold text-slate-900 mt-2">
+                                        {FIXED_POLICY[key]}
+                                        <span className="text-xs font-normal text-slate-400 ml-1">{unit}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </CardContent>
             </Card>
 
+            {/* Time-Bound Rules */}
             <Card className="border-0 shadow-sm">
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <Settings className="h-5 w-5 text-indigo-500" />
+                        <Clock className="h-5 w-5 text-indigo-500" />
                         Time-Bound Rules
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label>Advance Application Required (Days)</Label>
-                            <p className="text-xs text-slate-500 mb-2">Days before the leave start date.</p>
-                            <Input
-                                name="advance_days_required"
-                                type="number"
-                                min="0"
-                                defaultValue={currentPolicy.advance_days_required}
-                                readOnly={!isAdmin}
-                                className={!isAdmin ? "bg-slate-50 cursor-not-allowed" : ""}
-                            />
+                <CardContent className="space-y-3">
+                    {ruleItems.map((rule) => (
+                        <div key={rule.label} className="flex items-start justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div>
+                                <p className="font-semibold text-slate-800 text-sm">{rule.label}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">{rule.description}</p>
+                            </div>
+                            <Badge className="bg-indigo-100 text-indigo-700 border-0 text-sm font-bold px-3 ml-4 flex-shrink-0">
+                                {rule.value}
+                            </Badge>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Admin Action Time Limit (Days)</Label>
-                            <p className="text-xs text-slate-500 mb-2">Auto-reject limit for pending requests.</p>
-                            <Input
-                                name="admin_action_days"
-                                type="number"
-                                min="1"
-                                defaultValue={currentPolicy.admin_action_days}
-                                readOnly={!isAdmin}
-                                className={!isAdmin ? "bg-slate-50 cursor-not-allowed" : ""}
-                            />
-                        </div>
-                    </div>
+                    ))}
                 </CardContent>
             </Card>
-        </form>
+
+            {/* Policy Note */}
+            <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3">
+                <Settings className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                    <p className="text-sm font-semibold text-amber-800">Policy Note</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                        Leave entitlements are set by company policy and apply equally to all employees.
+                        Unpaid leave may be granted at the discretion of HR for cases exceeding the above limits.
+                        Maternity leave of <strong>150 days (≈ 5 months)</strong> is as per statutory requirements.
+                    </p>
+                </div>
+            </div>
+        </div>
     );
 }

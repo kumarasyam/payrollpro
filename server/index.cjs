@@ -12,7 +12,8 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ============================================================
 // Helper: Run a query and return results
@@ -109,6 +110,9 @@ app.post('/api/auth/register', async (req, res) => {
 // ============================================================
 // GENERIC CRUD HELPER
 // ============================================================
+// Tables that do NOT have an updated_date column
+const TABLES_WITHOUT_UPDATED_DATE = ['Departments'];
+
 function createCrudRoutes(tableName, entityName) {
 
     // GET /api/{entity} — list all
@@ -218,8 +222,10 @@ function createCrudRoutes(tableName, entityName) {
             params['id1'] = parseInt(id);
             params['id2'] = parseInt(id);
 
+            const hasUpdatedDate = !TABLES_WITHOUT_UPDATED_DATE.includes(tableName);
+            const setDatePart = hasUpdatedDate ? ', updated_date = GETDATE()' : '';
             const result = await query(
-                `UPDATE dbo.${tableName} SET ${setClauses.join(', ')}, updated_date = GETDATE() WHERE id = @id1; SELECT * FROM dbo.${tableName} WHERE id = @id2;`,
+                `UPDATE dbo.${tableName} SET ${setClauses.join(', ')}${setDatePart} WHERE id = @id1; SELECT * FROM dbo.${tableName} WHERE id = @id2;`,
                 params
             );
 
