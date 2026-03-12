@@ -9,7 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Eye, FileText } from "lucide-react";
+import { Plus, Search, Eye, FileText, Download } from "lucide-react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import PayslipDocument from "@/components/PayslipDocument";
+import { toast } from "sonner";
 
 const statusColors = {
   draft: "bg-slate-100 text-slate-600",
@@ -22,6 +26,8 @@ export default function PayslipManagement() {
   const [formOpen, setFormOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [downloadingSlip, setDownloadingSlip] = useState(null);
+  const hiddenRef = React.useRef(null);
   const qc = useQueryClient();
 
   const { data: payslips = [], isLoading } = useQuery({
@@ -77,6 +83,29 @@ export default function PayslipManagement() {
       net_salary: Math.round(net * 100) / 100,
       status: form.status,
     });
+  };
+
+  const handleDownload = (slip) => {
+    setDownloadingSlip(slip);
+    const toastId = toast.loading("Generating PDF...");
+    setTimeout(async () => {
+      if (!hiddenRef.current) return;
+      try {
+        const canvas = await html2canvas(hiddenRef.current, { scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Payslip_${slip.month}_${slip.employee_name}.pdf`);
+        toast.success("PDF Downloaded successfully", { id: toastId });
+      } catch (err) {
+        toast.error("Failed to generate PDF", { id: toastId });
+      } finally {
+        setDownloadingSlip(null);
+      }
+    }, 500);
   };
 
   const filtered = payslips.filter((p) =>
@@ -138,6 +167,9 @@ export default function PayslipManagement() {
                       <Badge className={`${statusColors[slip.status]} border-0 text-xs`}>{slip.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleDownload(slip)}>
+                        <Download className="h-4 w-4 text-slate-500" />
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => { setSelected(slip); setViewOpen(true); }}>
                         <Eye className="h-4 w-4 mr-1" /> View
                       </Button>
@@ -254,6 +286,13 @@ export default function PayslipManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Hidden container for PDF rendering */}
+      {downloadingSlip && (
+        <div style={{ position: "absolute", top: "-9999px", left: "-9999px" }}>
+            <PayslipDocument ref={hiddenRef} slip={downloadingSlip} />
+        </div>
+      )}
     </div>
   );
 }

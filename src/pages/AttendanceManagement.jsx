@@ -25,6 +25,7 @@ export default function AttendanceManagement() {
     const [search, setSearch] = useState("");
     const [formOpen, setFormOpen] = useState(false);
     const [dateFilter, setDateFilter] = useState(format(new Date(), "yyyy-MM-dd"));
+    const [statusFilter, setStatusFilter] = useState("all");
     const qc = useQueryClient();
 
     const { data: attendance = [], isLoading } = useQuery({
@@ -104,7 +105,8 @@ export default function AttendanceManagement() {
     const filtered = attendance.filter(a => {
         const matchSearch = a.employee_name?.toLowerCase().includes(search.toLowerCase());
         const matchDate = !dateFilter || a.date === dateFilter;
-        return matchSearch && matchDate;
+        const matchStatus = statusFilter === "all" || a.status === statusFilter;
+        return matchSearch && matchDate && matchStatus;
     });
 
     const todayPresent = attendance.filter(a => a.date === format(new Date(), "yyyy-MM-dd") && a.status === "present").length;
@@ -176,6 +178,17 @@ export default function AttendanceManagement() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input placeholder="Search employees..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
                     </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                         <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+                         <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="present">Present</SelectItem>
+                              <SelectItem value="absent">Absent</SelectItem>
+                              <SelectItem value="on_leave">On Leave</SelectItem>
+                              <SelectItem value="half_day">Half Day</SelectItem>
+                              <SelectItem value="holiday">Holiday</SelectItem>
+                         </SelectContent>
+                    </Select>
                     <Input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-44" />
                 </div>
                 <div className="overflow-x-auto">

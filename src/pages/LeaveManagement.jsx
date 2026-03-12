@@ -9,15 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle, FileImage } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle, FileImage, Briefcase } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 
 // Fixed company policy (mirrors LeavePolicy.jsx constants)
 const FIXED_POLICY = {
-  max_sick: 15, max_casual: 12, max_earned: 20,
-  max_maternity: 150, max_paternity: 15,
-  advance_days_required: 2, admin_action_days: 5,
+  max_sick: 999, max_casual: 10, max_earned: 4,
+  max_maternity: 168, max_paternity: 60,
+  advance_days_required: 2, admin_action_days: 3,
 };
 
 const statusColors = {
@@ -37,6 +37,11 @@ export default function LeaveManagement() {
   const { data: leaves = [], isLoading } = useQuery({
     queryKey: ["leaves"],
     queryFn: () => appClient.entities.LeaveApplication.list("-created_date"),
+  });
+
+  const { data: employees = [], isLoading: isEmployeesLoading } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => appClient.entities.Employee.list(),
   });
 
   const updateMutation = useMutation({
@@ -62,7 +67,7 @@ export default function LeaveManagement() {
           id: l.id, 
           data: { 
               status: 'rejected', 
-              remarks: `Auto-rejected: Exceeded admin review time limit (${policy.admin_action_days} days)` 
+              remarks: `due to the crucial time for project we cant approve` 
           } 
         });
       });
@@ -83,6 +88,10 @@ export default function LeaveManagement() {
     return matchStatus && matchSearch;
   });
 
+  const filteredEmployees = employees.filter((e) => {
+      return e.full_name?.toLowerCase().includes(search.toLowerCase()) || e.department?.toLowerCase().includes(search.toLowerCase());
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -98,6 +107,7 @@ export default function LeaveManagement() {
               <TabsTrigger value="pending">Pending ({leaves.filter(l => l.status === "pending").length})</TabsTrigger>
               <TabsTrigger value="approved">Approved</TabsTrigger>
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
+              <TabsTrigger value="balances" className="text-indigo-600 bg-indigo-50 border border-indigo-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white ml-2">Balances</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative w-full sm:w-64">
@@ -106,70 +116,106 @@ export default function LeaveManagement() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Days</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">Loading...</TableCell></TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">No leave applications found</TableCell></TableRow>
-              ) : (
-                filtered.map((leave) => (
-                  <TableRow key={leave.id} className="hover:bg-slate-50/50">
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-slate-900">{leave.employee_name}</p>
-                        <p className="text-xs text-slate-400">{leave.department}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="capitalize text-slate-600 font-medium">
-                        {leave.leave_type?.replace(/_/g, " ")}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {leave.start_date && format(new Date(leave.start_date), "MMM d")} - {leave.end_date && format(new Date(leave.end_date), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell className="font-medium">{leave.days}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1 items-start">
-                        <Badge className={`${statusColors[leave.status]} border-0 text-xs`}>{leave.status}</Badge>
-                        {leave.status === "pending" && policy && (
-                          <span className={`text-[10px] font-medium ${(() => {
-                            const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
-                            const daysLeft = policy.admin_action_days - diff;
-                            if (daysLeft < 0) return "text-rose-600 flex items-center gap-0.5";
-                            if (daysLeft <= 2) return "text-amber-600";
-                            return "text-slate-400";
-                          })()}`}>
-                            {(() => {
-                              const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
-                              const daysLeft = policy.admin_action_days - diff;
-                              return daysLeft < 0 ? <><AlertTriangle className="h-3 w-3" /> Overdue by {Math.abs(daysLeft)}d</> : `${daysLeft} days left to act`;
-                            })()}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelected(leave)}>
-                        <Eye className="h-4 w-4 mr-1" /> View
-                      </Button>
-                    </TableCell>
+            {filter === "balances" ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Designation</TableHead>
+                    <TableHead>Leaves Remaining</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                  {isEmployeesLoading ? (
+                    <TableRow><TableCell colSpan={3} className="text-center py-12 text-slate-400">Loading balances...</TableCell></TableRow>
+                  ) : filteredEmployees.length === 0 ? (
+                    <TableRow><TableCell colSpan={3} className="text-center py-12 text-slate-400">No employees found</TableCell></TableRow>
+                  ) : (
+                    filteredEmployees.map((emp) => (
+                      <TableRow key={emp.id} className="hover:bg-slate-50/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-slate-900">{emp.full_name}</p>
+                            <p className="text-xs text-slate-400">{emp.department}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-slate-600">{emp.designation}</TableCell>
+                        <TableCell>
+                          <Badge className={`${emp.leave_balance <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} border-0 font-bold text-sm px-3 py-1`}>
+                            {emp.leave_balance ?? 20} Days
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">Loading...</TableCell></TableRow>
+                  ) : filtered.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">No leave applications found</TableCell></TableRow>
+                  ) : (
+                    filtered.map((leave) => (
+                      <TableRow key={leave.id} className="hover:bg-slate-50/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-slate-900">{leave.employee_name}</p>
+                            <p className="text-xs text-slate-400">{leave.department}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="capitalize text-slate-600 font-medium">
+                            {leave.leave_type?.replace(/_/g, " ")}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600">
+                          {leave.start_date && format(new Date(leave.start_date), "MMM d")} - {leave.end_date && format(new Date(leave.end_date), "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell className="font-medium">{leave.days}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge className={`${statusColors[leave.status]} border-0 text-xs`}>{leave.status}</Badge>
+                            {leave.status === "pending" && policy && (
+                              <span className={`text-[10px] font-medium ${(() => {
+                                const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
+                                const daysLeft = policy.admin_action_days - diff;
+                                if (daysLeft < 0) return "text-rose-600 flex items-center gap-0.5";
+                                if (daysLeft <= 2) return "text-amber-600";
+                                return "text-slate-400";
+                              })()}`}>
+                                {(() => {
+                                  const diff = differenceInDays(new Date(), new Date(leave.created_date || new Date()));
+                                  const daysLeft = policy.admin_action_days - diff;
+                                  return daysLeft < 0 ? <><AlertTriangle className="h-3 w-3" /> Overdue by {Math.abs(daysLeft)}d</> : `${daysLeft} days left to act`;
+                                })()}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => setSelected(leave)}>
+                            <Eye className="h-4 w-4 mr-1" /> View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
         </div>
       </Card>
 

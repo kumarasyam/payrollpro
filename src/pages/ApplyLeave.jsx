@@ -15,13 +15,13 @@ import { useAuth } from "@/lib/AuthContext";
 
 // Fixed company leave policy limits
 const FIXED_POLICY = {
-  max_sick: 15,
-  max_casual: 12,
-  max_earned: 20,
-  max_maternity: 150,
-  max_paternity: 15,
+  max_sick: 999,
+  max_casual: 10,
+  max_earned: 4,
+  max_maternity: 168,
+  max_paternity: 60,
   advance_days_required: 2,
-  admin_action_days: 5,
+  admin_action_days: 3,
 };
 
 const statusIcons = {
@@ -59,6 +59,10 @@ export default function ApplyLeave() {
   });
   const [uploadedFile, setUploadedFile] = useState(null); // { name, type, base64 }
   const [uploading, setUploading] = useState(false);
+
+  const updateEmployeeMutation = useMutation({
+    mutationFn: ({ id, data }) => appClient.entities.Employee.update(id, data)
+  });
 
   const createMutation = useMutation({
     mutationFn: (data) => appClient.entities.LeaveApplication.create(data),
@@ -131,6 +135,16 @@ export default function ApplyLeave() {
       return;
     }
 
+    if (form.leave_type === "maternity" && employee?.gender === "Male") {
+      toast.error("Maternity leave is only applicable for female employees.");
+      return;
+    }
+
+    if (form.leave_type === "paternity" && employee?.gender === "Female") {
+      toast.error("Paternity leave is only applicable for male employees.");
+      return;
+    }
+
     if (!form.start_date || !form.end_date) {
       toast.error("Please select both start and end dates");
       return;
@@ -185,6 +199,13 @@ export default function ApplyLeave() {
       document_url: uploadedFile ? uploadedFile.base64 : "",
       status: "pending",
     });
+
+    if (employee) {
+        updateEmployeeMutation.mutate({
+            id: employee.id,
+            data: { leave_balance: Math.max(0, (employee.leave_balance || 20) - daysCount) }
+        });
+    }
   };
 
   const days = form.start_date && form.end_date
@@ -209,7 +230,7 @@ export default function ApplyLeave() {
         <div className="flex gap-4 text-sm">
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Sick</p>
-            <p className="font-bold text-slate-700">{usedLeaves.sick} / {FIXED_POLICY.max_sick}</p>
+            <p className="font-bold text-slate-700">{usedLeaves.sick} / ∞</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Casual</p>
@@ -218,6 +239,10 @@ export default function ApplyLeave() {
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Earned</p>
             <p className="font-bold text-slate-700">{usedLeaves.earned} / {FIXED_POLICY.max_earned}</p>
+          </div>
+          <div className="text-center bg-indigo-50 p-2 px-4 rounded-lg border border-indigo-100">
+            <p className="text-[10px] text-indigo-500 font-bold uppercase">Leave Balance</p>
+            <p className="font-bold text-indigo-700">{employee?.leave_balance ?? 20} days left</p>
           </div>
         </div>
       </div>
@@ -239,8 +264,8 @@ export default function ApplyLeave() {
                   <SelectContent>
                     <SelectItem value="sick">Sick Leave</SelectItem>
                     <SelectItem value="casual">Casual Leave</SelectItem>
-                    <SelectItem value="earned">Earned Leave</SelectItem>
-                    <SelectItem value="maternity">Maternity Leave (150 days)</SelectItem>
+                    <SelectItem value="earned">Earned Leave (EL)</SelectItem>
+                    <SelectItem value="maternity">Maternity Leave</SelectItem>
                     <SelectItem value="paternity">Paternity Leave</SelectItem>
                     <SelectItem value="unpaid">Unpaid Leave</SelectItem>
                   </SelectContent>

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Download, Eye, IndianRupee } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import PayslipDocument from "@/components/PayslipDocument";
+import { toast } from "sonner";
 
 const statusColors = {
   draft: "bg-slate-100 text-slate-600",
@@ -17,7 +21,8 @@ const statusColors = {
 export default function MyPayslips() {
   const { user } = useAuth();
   const [selected, setSelected] = useState(null);
-  const printRef = useRef();
+  const [downloadingSlip, setDownloadingSlip] = useState(null);
+  const hiddenRef = useRef(null);
 
   const { data: payslips = [] } = useQuery({
     queryKey: ["my-payslips", user?.email],
@@ -26,41 +31,26 @@ export default function MyPayslips() {
   });
 
   const handleDownload = (slip) => {
-    const content = `
-PAYSLIP - ${slip.month}
-================================
-Employee: ${slip.employee_name}
-Department: ${slip.department}
-Status: ${slip.status}
-
-EARNINGS
---------
-Base Salary:        ₹${slip.base_salary?.toLocaleString()}
-HRA:                ₹${slip.hra?.toLocaleString()}
-Transport:          ₹${slip.transport_allowance?.toLocaleString()}
-Medical:            ₹${slip.medical_allowance?.toLocaleString()}
-${slip.bonus > 0 ? `Bonus:              ₹${slip.bonus?.toLocaleString()}\n` : ""}
-Gross Salary:       ₹${slip.gross_salary?.toLocaleString()}
-
-DEDUCTIONS
-----------
-Tax:                ₹${slip.tax_deduction?.toLocaleString()}
-Provident Fund:     ₹${slip.provident_fund?.toLocaleString()}
-${slip.other_deductions > 0 ? `Other:              ₹${slip.other_deductions?.toLocaleString()}\n` : ""}
-Total Deductions:   ₹${slip.total_deductions?.toLocaleString()}
-
-================================
-NET SALARY:         ₹${slip.net_salary?.toLocaleString()}
-================================
-    `.trim();
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `payslip-${slip.month?.replace(/\s/g, "-")}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setDownloadingSlip(slip);
+    const toastId = toast.loading("Generating PDF...");
+    setTimeout(async () => {
+      if (!hiddenRef.current) return;
+      try {
+        const canvas = await html2canvas(hiddenRef.current, { scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Payslip_${slip.month}_${slip.employee_name}.pdf`);
+        toast.success("PDF Downloaded successfully", { id: toastId });
+      } catch (err) {
+        toast.error("Failed to generate PDF", { id: toastId });
+      } finally {
+        setDownloadingSlip(null);
+      }
+    }, 500);
   };
 
   return (
@@ -128,7 +118,7 @@ NET SALARY:         ₹${slip.net_salary?.toLocaleString()}
             </DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="space-y-4 py-2" ref={printRef}>
+            <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-slate-400">Employee</p><p className="font-medium">{selected.employee_name}</p></div>
                 <div><p className="text-slate-400">Department</p><p className="font-medium">{selected.department}</p></div>
@@ -161,6 +151,13 @@ NET SALARY:         ₹${slip.net_salary?.toLocaleString()}
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Hidden container for PDF rendering */}
+      {downloadingSlip && (
+        <div style={{ position: "absolute", top: "-9999px", left: "-9999px" }}>
+            <PayslipDocument ref={hiddenRef} slip={downloadingSlip} />
+        </div>
+      )}
     </div>
   );
 }

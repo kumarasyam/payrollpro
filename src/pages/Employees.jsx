@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -109,11 +109,11 @@ export default function Employees() {
                     </TableCell>
                     <TableCell className="text-slate-600">{emp.department}</TableCell>
                     <TableCell className="text-slate-600">{emp.designation}</TableCell>
-                    <TableCell className="font-medium">₹{emp.base_salary?.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium">₹{Number(emp.base_salary || emp.salary || 0).toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge className={`${statusColors[emp.status]} border-0 text-xs`}>{emp.status?.replace("_", " ")}</Badge>
                     </TableCell>
-                    <TableCell className="text-slate-600">{emp.leave_balance ?? 24} days</TableCell>
+                    <TableCell className="text-slate-600">{emp.leave_balance ?? 20} days</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => { setEditing(emp); setFormOpen(true); }}>

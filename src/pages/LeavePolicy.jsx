@@ -6,13 +6,13 @@ import { Settings, Calendar, Clock, Users, Baby, UserCheck } from "lucide-react"
 // ── Fixed Company Leave Policy ─────────────────────────────────────────────────
 // These values are company-defined and cannot be changed by any user.
 const FIXED_POLICY = {
-    max_sick: 15,
-    max_casual: 12,
-    max_earned: 20,
-    max_maternity: 150,   // 5 months
-    max_paternity: 15,
+    max_sick: "Unlimited",
+    max_casual: 10,
+    max_earned: 4,
+    max_maternity: 168,   // 24 weeks
+    max_paternity: 60,
     advance_days_required: 2,
-    admin_action_days: 5,
+    admin_action_days: 3,
 };
 
 const policyItems = [
@@ -22,7 +22,7 @@ const policyItems = [
         icon: Clock,
         color: "bg-rose-50 text-rose-600",
         iconColor: "text-rose-500",
-        description: "Medical illness or injury",
+        description: "Flexible for genuine illness",
         unit: "days/year",
     },
     {
@@ -36,7 +36,7 @@ const policyItems = [
     },
     {
         key: "max_earned",
-        label: "Earned Leave",
+        label: "Earned Leave (EL)",
         icon: UserCheck,
         color: "bg-emerald-50 text-emerald-600",
         iconColor: "text-emerald-500",
@@ -49,7 +49,7 @@ const policyItems = [
         icon: Baby,
         color: "bg-pink-50 text-pink-600",
         iconColor: "text-pink-500",
-        description: "For new mothers (≈ 5 months)",
+        description: "For new mothers (24 weeks)",
         unit: "days",
     },
     {
@@ -58,7 +58,7 @@ const policyItems = [
         icon: Users,
         color: "bg-blue-50 text-blue-600",
         iconColor: "text-blue-500",
-        description: "For new fathers",
+        description: "For new fathers (Baby Bonding)",
         unit: "days",
     },
 ];
@@ -149,7 +149,7 @@ export default function LeavePolicy() {
                     <p className="text-xs text-amber-700 mt-1">
                         Leave entitlements are set by company policy and apply equally to all employees.
                         Unpaid leave may be granted at the discretion of HR for cases exceeding the above limits.
-                        Maternity leave of <strong>150 days (≈ 5 months)</strong> is as per statutory requirements.
+                        Maternity leave of <strong>168 days (24 weeks)</strong> is as per statutory requirements.
                     </p>
                 </div>
             </div>

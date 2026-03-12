@@ -22,7 +22,7 @@ export default function EmployeeDashboard() {
     queryKey: ["leave-policy"],
     queryFn: async () => {
         const list = await appClient.entities.LeavePolicy.list();
-        return list?.[0] || { max_sick: 15, max_casual: 12, max_earned: 20, max_maternity: 90, max_paternity: 15 };
+        return list?.[0] || { max_sick: 999, max_casual: 10, max_earned: 4, max_maternity: 168, max_paternity: 60 };
     }
   });
 
@@ -51,14 +51,14 @@ export default function EmployeeDashboard() {
   };
 
   const availableLeaves = {
-    sick: (policy?.max_sick || 15) - usedLeaves.sick,
-    casual: (policy?.max_casual || 12) - usedLeaves.casual,
-    earned: (policy?.max_earned || 20) - usedLeaves.earned,
-    maternity: (policy?.max_maternity || 90) - usedLeaves.maternity,
-    paternity: (policy?.max_paternity || 15) - usedLeaves.paternity,
+    sick: "Unlimited",
+    casual: (policy?.max_casual || 10) - usedLeaves.casual,
+    earned: (policy?.max_earned || 4) - usedLeaves.earned,
+    maternity: (policy?.max_maternity || 168) - usedLeaves.maternity,
+    paternity: (policy?.max_paternity || 60) - usedLeaves.paternity,
   };
 
-  const totalAvailable = availableLeaves.sick + availableLeaves.casual + availableLeaves.earned;
+  const totalAvailable = employee?.leave_balance ?? 20;
 
   const statusColors = {
     pending: "bg-amber-100 text-amber-700",
@@ -74,7 +74,7 @@ export default function EmployeeDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Available" value={`${totalAvailable} days`} icon={CalendarDays} color="indigo" subtitle="Sick + Casual + Earned" />
+        <StatCard title="Total Available" value={`${totalAvailable} days`} icon={CalendarDays} color="indigo" subtitle="Remaining Leave Balance" />
         <StatCard title="Pending Leaves" value={pendingLeaves} icon={Clock} color="amber" />
         <StatCard title="Total Payslips" value={payslips.length} icon={FileText} color="blue" />
         <StatCard title="Last Net Pay" value={latestPayslip ? `₹${latestPayslip.net_salary?.toLocaleString()}` : "—"} icon={IndianRupee} color="emerald" />
@@ -83,23 +83,23 @@ export default function EmployeeDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Sick</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.sick} / {policy?.max_sick || 15}</p>
+              <p className="text-lg font-bold text-slate-800">∞</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Casual</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.casual} / {policy?.max_casual || 12}</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.casual} / {policy?.max_casual || 10}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Earned</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.earned} / {policy?.max_earned || 20}</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.earned} / {policy?.max_earned || 4}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Maternity</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.maternity} / {policy?.max_maternity || 90}</p>
+              <p className="text-lg font-bold text-slate-800">{employee?.gender === "Male" ? "0 / 0" : `${availableLeaves.maternity} / ${policy?.max_maternity || 168}`}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Paternity</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.paternity} / {policy?.max_paternity || 15}</p>
+              <p className="text-lg font-bold text-slate-800">{employee?.gender === "Female" ? "0 / 0" : `${availableLeaves.paternity} / ${policy?.max_paternity || 60}`}</p>
           </div>
       </div>
 

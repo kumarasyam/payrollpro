@@ -234,36 +234,55 @@ export default function SalaryRequest() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="raise">Salary Raise</SelectItem>
+                                    <SelectItem value="advance">Advance Salary</SelectItem>
                                     <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Proposed Amount - PREDEFINED OPTIONS */}
+                        {/* Proposed Amount / Advance Amount */}
                         <div className="space-y-2">
-                            <Label>Select Increment (%)</Label>
+                            <Label>{form.change_type === 'advance' ? 'Select Advance Amount (%)' : 'Select Increment (%)'}</Label>
                             <Select 
                                 value={form.proposed_salary} 
                                 onValueChange={(v) => setForm({ ...form, proposed_salary: v })}
                             >
                                 <SelectTrigger className="h-11">
-                                    <SelectValue placeholder="Select percentage" />
+                                    <SelectValue placeholder={form.change_type === 'advance' ? "Select advance percentage" : "Select percentage"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {[5, 10, 15, 20, 25, 30].map(pct => (
-                                        <SelectItem key={pct} value={(currentSalary * (1 + pct/100)).toString()}>
-                                            {pct}% (₹{(currentSalary * (1 + pct/100)).toLocaleString()})
-                                        </SelectItem>
-                                    ))}
-                                    <SelectItem value={(currentSalary + 5000).toString()}>Fixed +₹5,000</SelectItem>
-                                    <SelectItem value={(currentSalary + 10000).toString()}>Fixed +₹10,000</SelectItem>
+                                    {form.change_type === 'advance' ? (
+                                        <>
+                                            {[10, 20, 30, 40, 50, 100, 200, 300].map(pct => (
+                                                <SelectItem key={pct} value={((currentSalary * pct) / 100).toString()}>
+                                                    {pct}% {pct >= 100 ? `(${pct/100} Month${pct > 100 ? 's' : ''})` : ''} - ₹{((currentSalary * pct) / 100).toLocaleString()}
+                                                </SelectItem>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {[5, 10, 15, 20, 25, 30].map(pct => (
+                                                <SelectItem key={pct} value={(currentSalary * (1 + pct/100)).toString()}>
+                                                    {pct}% (₹{(currentSalary * (1 + pct/100)).toLocaleString()})
+                                                </SelectItem>
+                                            ))}
+                                            <SelectItem value={(currentSalary + 5000).toString()}>Fixed +₹5,000</SelectItem>
+                                            <SelectItem value={(currentSalary + 10000).toString()}>Fixed +₹10,000</SelectItem>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                             
-                            {proposedNum > 0 && (
+                            {proposedNum > 0 && form.change_type !== 'advance' && (
                                 <div className="flex items-center gap-1 text-sm font-medium text-emerald-600">
                                     <ArrowUp className="h-3 w-3" />
                                     +₹{diff.toLocaleString()} increment from current salary
+                                </div>
+                            )}
+                            {proposedNum > 0 && form.change_type === 'advance' && (
+                                <div className="flex items-center gap-1 text-sm font-medium text-indigo-600">
+                                    <IndianRupee className="h-3 w-3" />
+                                    Total advance requested: ₹{proposedNum.toLocaleString()}
                                 </div>
                             )}
                         </div>
@@ -334,15 +353,31 @@ export default function SalaryRequest() {
                                 </div>
                             </div>
                             <div className="flex gap-4 p-4 bg-slate-50 rounded-xl">
-                                <div className="flex-1 text-center">
-                                    <p className="text-xs text-slate-400">Current</p>
-                                    <p className="text-lg font-bold text-slate-900">₹{selected.current_salary?.toLocaleString()}</p>
-                                </div>
-                                <div className="flex items-center text-slate-300">→</div>
-                                <div className="flex-1 text-center">
-                                    <p className="text-xs text-slate-400">Proposed</p>
-                                    <p className="text-lg font-bold text-indigo-600">₹{selected.proposed_salary?.toLocaleString()}</p>
-                                </div>
+                                {selected.change_type === 'advance' ? (
+                                    <>
+                                        <div className="flex-1 text-center">
+                                            <p className="text-xs text-slate-400">Current Salary</p>
+                                            <p className="text-lg font-bold text-slate-900">₹{selected.current_salary?.toLocaleString()}</p>
+                                        </div>
+                                        <div className="flex items-center text-slate-300">→</div>
+                                        <div className="flex-1 text-center">
+                                            <p className="text-xs text-slate-400">Requested Advance</p>
+                                            <p className="text-lg font-bold text-indigo-600">₹{selected.proposed_salary?.toLocaleString()}</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex-1 text-center">
+                                            <p className="text-xs text-slate-400">Current</p>
+                                            <p className="text-lg font-bold text-slate-900">₹{selected.current_salary?.toLocaleString()}</p>
+                                        </div>
+                                        <div className="flex items-center text-slate-300">→</div>
+                                        <div className="flex-1 text-center">
+                                            <p className="text-xs text-slate-400">Proposed</p>
+                                            <p className="text-lg font-bold text-indigo-600">₹{selected.proposed_salary?.toLocaleString()}</p>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             
                             {selected.status === "rejected" && selected.rejection_reason && (

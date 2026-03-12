@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function EmployeeForm({ open, onClose, onSave, employee }) {
   const [form, setForm] = useState({
     full_name: "", email: "", phone: "", department: "",
-    designation: "", date_of_joining: "", base_salary: "", status: "active", leave_balance: 24,
+    designation: "", date_of_joining: "", base_salary: "", status: "active", leave_balance: 20, gender: "Male",
   });
 
   const { data: departments = [] } = useQuery({
@@ -20,14 +20,14 @@ export default function EmployeeForm({ open, onClose, onSave, employee }) {
 
   useEffect(() => {
     if (employee) {
-      setForm({ ...employee, base_salary: employee.base_salary?.toString() || "" });
+      setForm({ ...employee, base_salary: employee.base_salary?.toString() || "", gender: employee.gender || "Male" });
     } else {
-      setForm({ full_name: "", email: "", phone: "", department: "", designation: "", date_of_joining: "", base_salary: "", status: "active", leave_balance: 24 });
+      setForm({ full_name: "", email: "", phone: "", department: "", designation: "", date_of_joining: "", base_salary: "", status: "active", leave_balance: 20, gender: "Male" });
     }
   }, [employee, open]);
 
   const handleSubmit = () => {
-    onSave({ ...form, base_salary: parseFloat(form.base_salary) || 0, leave_balance: parseInt(form.leave_balance) || 24 });
+    onSave({ ...form, base_salary: parseFloat(form.base_salary) || 0, leave_balance: parseInt(form.leave_balance) || 20 });
   };
 
   return (
@@ -48,6 +48,16 @@ export default function EmployeeForm({ open, onClose, onSave, employee }) {
           <div>
             <Label>Phone</Label>
             <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 234 567 890" />
+          </div>
+          <div>
+            <Label>Gender</Label>
+            <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
+              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>Department</Label>
