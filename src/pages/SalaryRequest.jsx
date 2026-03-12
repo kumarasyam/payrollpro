@@ -79,11 +79,11 @@ export default function SalaryRequest() {
         }
 
         createMutation.mutate({
-            employee_name: employee?.name || user?.full_name,
+            employee_name: employee?.full_name || user?.full_name,
             employee_email: user?.email,
             department: employee?.department || "—",
             change_type: form.change_type,
-            current_salary: employee?.salary || 0,
+            current_salary: employee?.base_salary || 0,
             proposed_salary: proposed,
             month: format(new Date(), "MMMM yyyy"),
             reason: form.reason,
@@ -91,7 +91,7 @@ export default function SalaryRequest() {
         });
     };
 
-    const currentSalary = employee?.salary || 0;
+    const currentSalary = employee?.base_salary || 0;
     const proposedNum = parseFloat(form.proposed_salary) || 0;
     const diff = proposedNum - currentSalary;
 

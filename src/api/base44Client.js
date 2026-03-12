@@ -209,17 +209,17 @@ function createAuth() {
       }
     },
 
-    async register({ email, password, full_name, role = 'employee' }) {
+    async register({ email, password, full_name, role = 'employee', gender = 'Male' }) {
       try {
         const user = await apiFetch('/auth/register', {
           method: 'POST',
-          body: { email, password, full_name, role },
+          body: { email, password, full_name, role, gender },
         });
         localStorage.setItem(SESSION_KEY, JSON.stringify(user));
         return user;
       } catch (err) {
         // Fallback to localStorage auth
-        return this._fallbackRegister({ email, password, full_name, role });
+        return this._fallbackRegister({ email, password, full_name, role, gender });
       }
     },
 
@@ -261,13 +261,13 @@ function createAuth() {
       return sessionUser;
     },
 
-    _fallbackRegister({ email, password, full_name, role }) {
+    _fallbackRegister({ email, password, full_name, role, gender = 'Male' }) {
       const users = JSON.parse(localStorage.getItem('payrollpro_users') || '[]');
       if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
         throw new Error('A user with this email already exists');
       }
       const newUser = {
-        id: crypto.randomUUID(), email, password, full_name, role,
+        id: crypto.randomUUID(), email, password, full_name, role, gender,
         created_date: new Date().toISOString(),
       };
       users.push(newUser);
@@ -279,6 +279,7 @@ function createAuth() {
           id: `e-${crypto.randomUUID().slice(0, 8)}`,
           full_name,
           email,
+          gender,
           phone: '',
           department: 'Unassigned',
           designation: 'New Joiner',
