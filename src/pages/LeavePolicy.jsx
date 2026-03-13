@@ -6,9 +6,8 @@ import { Settings, Calendar, Clock, Users, Baby, UserCheck } from "lucide-react"
 // ── Fixed Company Leave Policy ─────────────────────────────────────────────────
 // These values are company-defined and cannot be changed by any user.
 const FIXED_POLICY = {
-    max_sick: "Unlimited",
+    max_sick: 10,
     max_casual: 10,
-    max_earned: 4,
     max_maternity: 168,   // 24 weeks
     max_paternity: 60,
     advance_days_required: 2,
@@ -32,15 +31,6 @@ const policyItems = [
         color: "bg-amber-50 text-amber-600",
         iconColor: "text-amber-500",
         description: "Personal or urgent errands",
-        unit: "days/year",
-    },
-    {
-        key: "max_earned",
-        label: "Earned Leave (EL)",
-        icon: UserCheck,
-        color: "bg-emerald-50 text-emerald-600",
-        iconColor: "text-emerald-500",
-        description: "Accrued over service period",
         unit: "days/year",
     },
     {

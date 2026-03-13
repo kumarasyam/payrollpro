@@ -15,9 +15,8 @@ import { useAuth } from "@/lib/AuthContext";
 
 // Fixed company leave policy limits
 const FIXED_POLICY = {
-  max_sick: 999,
+  max_sick: 10,
   max_casual: 10,
-  max_earned: 4,
   max_maternity: 168,
   max_paternity: 60,
   advance_days_required: 2,
@@ -215,7 +214,6 @@ export default function ApplyLeave() {
   const usedLeaves = {
     sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
     casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
 
   const needsDocument = form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 3);
@@ -230,15 +228,11 @@ export default function ApplyLeave() {
         <div className="flex gap-4 text-sm">
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Sick</p>
-            <p className="font-bold text-slate-700">{usedLeaves.sick} / ∞</p>
+            <p className="font-bold text-slate-700">{usedLeaves.sick} / {FIXED_POLICY.max_sick}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Casual</p>
             <p className="font-bold text-slate-700">{usedLeaves.casual} / {FIXED_POLICY.max_casual}</p>
-          </div>
-          <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Earned</p>
-            <p className="font-bold text-slate-700">{usedLeaves.earned} / {FIXED_POLICY.max_earned}</p>
           </div>
           <div className="text-center bg-indigo-50 p-2 px-4 rounded-lg border border-indigo-100">
             <p className="text-[10px] text-indigo-500 font-bold uppercase">Leave Balance</p>
@@ -264,7 +258,6 @@ export default function ApplyLeave() {
                   <SelectContent>
                     <SelectItem value="sick">Sick Leave</SelectItem>
                     <SelectItem value="casual">Casual Leave</SelectItem>
-                    <SelectItem value="earned">Earned Leave (EL)</SelectItem>
                     <SelectItem value="maternity">Maternity Leave</SelectItem>
                     <SelectItem value="paternity">Paternity Leave</SelectItem>
                     <SelectItem value="unpaid">Unpaid Leave</SelectItem>

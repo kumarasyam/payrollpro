@@ -22,7 +22,7 @@ export default function EmployeeDashboard() {
     queryKey: ["leave-policy"],
     queryFn: async () => {
         const list = await appClient.entities.LeavePolicy.list();
-        return list?.[0] || { max_sick: 999, max_casual: 10, max_earned: 4, max_maternity: 168, max_paternity: 60 };
+        return list?.[0] || { max_sick: 10, max_casual: 10, max_maternity: 168, max_paternity: 60 };
     }
   });
 
@@ -45,15 +45,13 @@ export default function EmployeeDashboard() {
   const usedLeaves = {
     sick: approvedLeaves.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + curr.days, 0),
     casual: approvedLeaves.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + curr.days, 0),
-    earned: approvedLeaves.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + curr.days, 0),
     maternity: approvedLeaves.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + curr.days, 0),
     paternity: approvedLeaves.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + curr.days, 0),
   };
 
   const availableLeaves = {
-    sick: "Unlimited",
+    sick: (policy?.max_sick || 10) - usedLeaves.sick,
     casual: (policy?.max_casual || 10) - usedLeaves.casual,
-    earned: (policy?.max_earned || 4) - usedLeaves.earned,
     maternity: (policy?.max_maternity || 168) - usedLeaves.maternity,
     paternity: (policy?.max_paternity || 60) - usedLeaves.paternity,
   };
@@ -80,18 +78,14 @@ export default function EmployeeDashboard() {
         <StatCard title="Last Net Pay" value={latestPayslip ? `₹${latestPayslip.net_salary?.toLocaleString()}` : "—"} icon={IndianRupee} color="emerald" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Sick</p>
-              <p className="text-lg font-bold text-slate-800">∞</p>
+              <p className="text-lg font-bold text-slate-800">{availableLeaves.sick} / {policy?.max_sick || 10}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Casual</p>
               <p className="text-lg font-bold text-slate-800">{availableLeaves.casual} / {policy?.max_casual || 10}</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Earned</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.earned} / {policy?.max_earned || 4}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-xs text-slate-400 font-bold uppercase mb-1">Maternity</p>
