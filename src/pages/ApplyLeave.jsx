@@ -9,9 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, Send, Clock, CheckCircle2, XCircle, Upload, FileImage, X } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, addDays, isBefore, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertCircle } from "lucide-react";
 
 // Fixed company leave policy limits
 const FIXED_POLICY = {
@@ -59,6 +61,22 @@ export default function ApplyLeave() {
   });
   const [uploadedFile, setUploadedFile] = useState(null); // { name, type, base64 }
   const [uploading, setUploading] = useState(false);
+  const [policyErrors, setPolicyErrors] = useState([]);
+  const [showPolicyError, setShowPolicyError] = useState(false);
+
+  const { data: policy } = useQuery({
+    queryKey: ["leave-policy"],
+    queryFn: async () => {
+      const list = await appClient.entities.LeavePolicy.list();
+      return list?.[0] || { 
+        max_sick: 4, max_casual: 6, max_earned: 14, 
+        max_maternity: 168, max_paternity: 60, 
+        advance_days_required: 2 
+      };
+    }
+  });
+
+  const activePolicy = policy || FIXED_POLICY;
 
 
 
@@ -120,57 +138,32 @@ export default function ApplyLeave() {
   // ── Submit Handler ───────────────────────────────────────────
   const handleSubmit = (e) => {
     e.preventDefault();
+    const errors = [];
 
-    const days = form.start_date && form.end_date
-      ? Math.max(differenceInDays(new Date(form.end_date), new Date(form.start_date)) + 1, 0)
-      : 0;
-
-    const isSick = form.leave_type === 'sick' && days >= 1;
-    const totalAvailable = employee?.leave_balance ?? 24;
-    const isMaternity = form.leave_type === 'maternity';
-
-    if ((isSick || isMaternity) && !uploadedFile) {
-      toast.error(`Supporting document is required for ${isMaternity ? "Maternity" : "Sick"} leave.`);
+    if (!form.leave_type || !form.start_date || !form.end_date) {
+      toast.error("Please fill in all required fields (Leave Type, Dates)");
       return;
     }
 
-    if (form.leave_type === "maternity" && employee?.gender === "Male") {
-      toast.error("Maternity leave is only applicable for female employees.");
-      return;
-    }
+    const startDate = startOfDay(new Date(form.start_date));
+    const endDate = startOfDay(new Date(form.end_date));
+    const today = startOfDay(new Date());
 
-    if (form.leave_type === "paternity" && employee?.gender === "Female") {
-      toast.error("Paternity leave is only applicable for male employees.");
-      return;
-    }
-
-    if (!form.start_date || !form.end_date) {
-      toast.error("Please select both start and end dates");
-      return;
-    }
-
-    const startDate = new Date(form.start_date);
-    const endDate = new Date(form.end_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (endDate < startDate) {
-      toast.error("End date cannot be before start date");
-      return;
+    if (isBefore(endDate, startDate)) {
+      errors.push("End date cannot be before the start date.");
     }
 
     const daysCount = differenceInDays(endDate, startDate) + 1;
 
-    // Advance days check
-    if (FIXED_POLICY.advance_days_required > 0 && !["sick", "unpaid"].includes(form.leave_type)) {
-      const advanceDays = differenceInDays(startDate, today);
-      if (advanceDays < FIXED_POLICY.advance_days_required) {
-        toast.error(`Policy requires applying at least ${FIXED_POLICY.advance_days_required} days in advance for ${form.leave_type} leave.`);
-        return;
+    // 1. Advance notice check
+    if (activePolicy.advance_days_required > 0 && !["sick", "unpaid"].includes(form.leave_type)) {
+      const minDate = addDays(today, activePolicy.advance_days_required);
+      if (isBefore(startDate, minDate)) {
+        errors.push(`This leave type requires at least ${activePolicy.advance_days_required} days advance notice. You can apply for dates starting from ${format(minDate, "PPP")} or later.`);
       }
     }
 
-    // Leave balance validation
+    // 2. Leave limit check
     const currentYear = new Date().getFullYear();
     const sameTypeLeaves = leaves.filter(l =>
       l.leave_type === form.leave_type &&
@@ -179,10 +172,30 @@ export default function ApplyLeave() {
     );
     const usedDays = sameTypeLeaves.reduce((sum, l) => sum + (l.days || 0), 0);
     const maxDaysKey = `max_${form.leave_type}`;
-    const maxDays = FIXED_POLICY[maxDaysKey] !== undefined ? FIXED_POLICY[maxDaysKey] : 999;
+    const maxDays = activePolicy[maxDaysKey] !== undefined ? activePolicy[maxDaysKey] : 999;
 
     if (usedDays + daysCount > maxDays) {
-      toast.error(`Limit exceeded! You can take up to ${maxDays} ${form.leave_type} leave days per year. (Used: ${usedDays})`);
+      errors.push(`Maximum ${form.leave_type} leave limit exceeded. Policy allows ${maxDays} days/year. You have already used/applied for ${usedDays} days.`);
+    }
+
+    // 3. Documentation check
+    const isSick = form.leave_type === 'sick' && daysCount >= 1;
+    const isMaternity = form.leave_type === 'maternity';
+    if ((isSick || isMaternity) && !uploadedFile) {
+      errors.push(`A supporting document (Medical Certificate/Proof) is required for ${form.leave_type} leave.`);
+    }
+
+    // 4. Gender restriction
+    if (form.leave_type === "maternity" && employee?.gender === "Male") {
+      errors.push("Maternity leave is restricted to female employees.");
+    }
+    if (form.leave_type === "paternity" && employee?.gender === "Female") {
+      errors.push("Paternity leave is restricted to male employees.");
+    }
+
+    if (errors.length > 0) {
+      setPolicyErrors(errors);
+      setShowPolicyError(true);
       return;
     }
 
@@ -222,20 +235,20 @@ export default function ApplyLeave() {
         <div className="flex gap-4 text-sm">
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Sick Used</p>
-            <p className="font-bold text-slate-700">{usedLeaves.sick} / {FIXED_POLICY.max_sick}</p>
+            <p className="font-bold text-slate-700">{usedLeaves.sick} / {activePolicy.max_sick}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Casual Used</p>
-            <p className="font-bold text-slate-700">{usedLeaves.casual} / {FIXED_POLICY.max_casual}</p>
+            <p className="font-bold text-slate-700">{usedLeaves.casual} / {activePolicy.max_casual}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Earned Used</p>
-            <p className="font-bold text-slate-700">{usedLeaves.earned} / {FIXED_POLICY.max_earned}</p>
+            <p className="font-bold text-slate-700">{usedLeaves.earned} / {activePolicy.max_earned}</p>
           </div>
           <div className="text-center bg-indigo-50 p-2 px-4 rounded-lg border border-indigo-100">
             <p className="text-[10px] text-indigo-500 font-bold uppercase">Total Usage</p>
             <p className="font-bold text-indigo-700">
-              {usedLeaves.sick + usedLeaves.casual + usedLeaves.earned} / {FIXED_POLICY.max_sick + FIXED_POLICY.max_casual + FIXED_POLICY.max_earned}
+              {usedLeaves.sick + usedLeaves.casual + usedLeaves.earned} / {activePolicy.max_sick + activePolicy.max_casual + activePolicy.max_earned}
             </p>
           </div>
         </div>
@@ -427,6 +440,34 @@ export default function ApplyLeave() {
           )}
         </CardContent>
       </Card>
+
+      {/* Policy Violation Pop Message */}
+      <Dialog open={showPolicyError} onOpenChange={setShowPolicyError}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <AlertCircle className="h-5 w-5" />
+              Policy Validation Failed
+            </DialogTitle>
+            <DialogDescription>
+              Your leave request does not comply with the company leave policy for the following reasons:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-3">
+            {policyErrors.map((err, idx) => (
+              <div key={idx} className="flex gap-2 p-3 bg-rose-50 text-rose-700 text-sm rounded-lg border border-rose-100">
+                <div className="flex-shrink-0 font-bold">•</div>
+                <p>{err}</p>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowPolicyError(false)} className="bg-slate-900 hover:bg-slate-800">
+              I Understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
