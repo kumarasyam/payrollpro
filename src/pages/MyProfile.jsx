@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,22 @@ export default function MyProfile() {
         enabled: !!user?.email,
         select: (data) => data?.[0],
     });
+
+    const { data: leaves = [] } = useQuery({
+        queryKey: ["my-leaves", user?.email],
+        queryFn: () => appClient.entities.LeaveApplication.filter({ employee_email: user.email }),
+        enabled: !!user?.email,
+    });
+
+    const { data: policy } = useQuery({
+        queryKey: ["leave-policy"],
+        queryFn: () => appClient.entities.LeavePolicy.list(),
+        select: (data) => data?.[0],
+    });
+
+    const usedLeaves = leaves.filter(l => l.status === "approved").reduce((sum, l) => sum + (l.days || 0), 0);
+    const totalPolicy = (policy?.max_sick || 4) + (policy?.max_casual || 6) + (policy?.max_earned || 14);
+    const leaveBalance = totalPolicy - usedLeaves;
 
     const [contactForm, setContactForm] = useState({
         phone: "", email: "",
@@ -192,12 +208,12 @@ export default function MyProfile() {
                 <CardContent>
                     <div className="flex items-center gap-4">
                         <div className="flex-1 text-center p-4 bg-indigo-50 rounded-xl">
-                            <p className="text-3xl font-bold text-indigo-600">{employee?.leave_balance ?? 24}</p>
+                            <p className="text-3xl font-bold text-indigo-600">{leaveBalance}</p>
                             <p className="text-xs text-slate-500 mt-1">Days Available</p>
                         </div>
                         <div className="flex-1 text-center p-4 bg-amber-50 rounded-xl">
-                            <p className="text-3xl font-bold text-amber-600">{24 - (employee?.leave_balance ?? 24)}</p>
-                            <p className="text-xs text-slate-500 mt-1">Days Used</p>
+                            <p className="text-3xl font-bold text-amber-600">{usedLeaves}</p>
+                            <p className="text-xs text-slate-500 mt-1">Days Used (Approved)</p>
                         </div>
                     </div>
                 </CardContent>

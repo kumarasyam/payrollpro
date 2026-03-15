@@ -27,69 +27,21 @@ export default function LeavePolicy() {
                 </Badge>
             </div>
 
-            <Card className="border-0 shadow-sm overflow-hidden">
-                <CardHeader className="bg-slate-900 text-white">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Info className="h-5 w-5 text-indigo-400" />
-                        Annual Leave Entitlements
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                    <ul className="space-y-4">
-                        <li className="flex items-start gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold text-slate-900">Sick Leave: {FIXED_POLICY.max_sick} Days</p>
-                                <p className="text-sm text-slate-500">Applicable for genuine illness. Supporting medical document is <strong>required for all sick leave applications</strong> regardless of duration.</p>
-                            </div>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold text-slate-900">Casual Leave: {FIXED_POLICY.max_casual} Days</p>
-                                <p className="text-sm text-slate-500">Can be used for personal work or urgent errands.</p>
-                            </div>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold text-slate-900">Earned Leave (EL): {FIXED_POLICY.max_earned} Days</p>
-                                <p className="text-sm text-slate-500">Accumulated leave for planned vacations and longer breaks.</p>
-                            </div>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold text-slate-900">Maternity Leave: {FIXED_POLICY.max_maternity} Days (24 Weeks)</p>
-                                <p className="text-sm text-slate-500">Statutory leave for female employees. Medical documentation required.</p>
-                            </div>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold text-slate-900">Paternity Leave: {FIXED_POLICY.max_paternity} Days</p>
-                                <p className="text-sm text-slate-500">For baby bonding, applicable for male employees.</p>
-                            </div>
-                        </li>
-                    </ul>
-                </CardContent>
-            </Card>
-
             <Card className="border-0 shadow-sm">
                 <CardHeader>
-                    <CardTitle className="text-lg">Application Rules</CardTitle>
+                    <CardTitle className="text-lg">Leave Entitlements & Rules</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                            <p className="text-sm font-semibold text-indigo-900">Advance Notice Requirement</p>
-                            <p className="text-sm text-indigo-700 mt-1">Employees must apply at least <strong>{FIXED_POLICY.advance_days_required} days in advance</strong> for Casual and Earned leaves. Sick leave does not require advance notice but requires documentation upon return.</p>
-                        </div>
-                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                            <p className="text-sm font-semibold text-slate-900">Approval Deadline</p>
-                            <p className="text-sm text-slate-600 mt-1">Admins must act on leave applications within <strong>{FIXED_POLICY.admin_action_days} days</strong>. If no action is taken, the system will automatically process the request (typically rejection with a default reason).</p>
-                        </div>
-                    </div>
+                <CardContent className="p-6">
+                    <ul className="list-disc pl-5 space-y-3 text-slate-700">
+                        <li><strong>Sick Leave:</strong> {FIXED_POLICY.max_sick} Days per year. Supporting medical document is required for ALL sick leave applications.</li>
+                        <li><strong>Casual Leave:</strong> {FIXED_POLICY.max_casual} Days per year for personal/urgent work.</li>
+                        <li><strong>Earned Leave (EL):</strong> {FIXED_POLICY.max_earned} Days per year for planned vacations.</li>
+                        <li><strong>Maternity Leave:</strong> {FIXED_POLICY.max_maternity} Days (24 Weeks) for female employees.</li>
+                        <li><strong>Paternity Leave:</strong> {FIXED_POLICY.max_paternity} Days for male employees.</li>
+                        <li className="pt-2"><strong>Advance Notice:</strong> Minimum {FIXED_POLICY.advance_days_required} days advance application required for Casual and Earned leave.</li>
+                        <li><strong>Admin Processing:</strong> Requests are processed by admin within {FIXED_POLICY.admin_action_days} days.</li>
+                        <li><strong>Attendance Sync:</strong> Approved leaves are marked as "On Leave" in attendance. Rejected leaves are marked as "Absent".</li>
+                    </ul>
                 </CardContent>
             </Card>
         </div>

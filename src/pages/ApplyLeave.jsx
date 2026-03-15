@@ -54,6 +54,12 @@ export default function ApplyLeave() {
     enabled: !!user?.email,
   });
 
+  const { data: policy } = useQuery({
+    queryKey: ["leave-policy"],
+    queryFn: () => appClient.entities.LeavePolicy.list(),
+    select: (data) => data?.[0],
+  });
+
   const [form, setForm] = useState({
     leave_type: "", start_date: "", end_date: "", reason: "",
   });
@@ -199,13 +205,6 @@ export default function ApplyLeave() {
       document_url: uploadedFile ? uploadedFile.base64 : "",
       status: "pending",
     });
-
-    if (employee) {
-        updateEmployeeMutation.mutate({
-            id: employee.id,
-            data: { leave_balance: Math.max(0, (employee.leave_balance || 20) - daysCount) }
-        });
-    }
   };
 
   const days = form.start_date && form.end_date
@@ -213,9 +212,15 @@ export default function ApplyLeave() {
     : 0;
 
   const usedLeaves = {
-    sick: leaves.filter(l => l.leave_type === 'sick' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    casual: leaves.filter(l => l.leave_type === 'casual' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    earned: leaves.filter(l => l.leave_type === 'earned' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+  };
+
+  const policyLimits = {
+    max_sick: policy?.max_sick || FIXED_POLICY.max_sick,
+    max_casual: policy?.max_casual || FIXED_POLICY.max_casual,
+    max_earned: policy?.max_earned || FIXED_POLICY.max_earned,
   };
 
   const needsDocument = form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 1);
@@ -230,20 +235,20 @@ export default function ApplyLeave() {
         <div className="flex gap-4 text-sm">
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Sick Used</p>
-            <p className="font-bold text-slate-700">{usedLeaves.sick} / {FIXED_POLICY.max_sick}</p>
+            <p className="font-bold text-slate-700">{usedLeaves.sick} / {policyLimits.max_sick}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Casual Used</p>
-            <p className="font-bold text-slate-700">{usedLeaves.casual} / {FIXED_POLICY.max_casual}</p>
+            <p className="font-bold text-slate-700">{usedLeaves.casual} / {policyLimits.max_casual}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
             <p className="text-[10px] text-slate-400 font-bold uppercase">Earned Used</p>
-            <p className="font-bold text-slate-700">{usedLeaves.earned} / {FIXED_POLICY.max_earned}</p>
+            <p className="font-bold text-slate-700">{usedLeaves.earned} / {policyLimits.max_earned}</p>
           </div>
           <div className="text-center bg-indigo-50 p-2 px-4 rounded-lg border border-indigo-100">
             <p className="text-[10px] text-indigo-500 font-bold uppercase">Total Usage</p>
             <p className="font-bold text-indigo-700">
-              {usedLeaves.sick + usedLeaves.casual + usedLeaves.earned} / {FIXED_POLICY.max_sick + FIXED_POLICY.max_casual + FIXED_POLICY.max_earned}
+              {usedLeaves.sick + usedLeaves.casual + usedLeaves.earned} / {policyLimits.max_sick + policyLimits.max_casual + policyLimits.max_earned}
             </p>
           </div>
         </div>

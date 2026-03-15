@@ -38,16 +38,17 @@ export default function EmployeeDashboard() {
     enabled: !!user?.email,
   });
 
-  const relevantLeaves = leaves.filter(l => l.status !== "rejected" && new Date(l.start_date).getFullYear() === new Date().getFullYear());
-  const pendingLeaves = leaves.filter((l) => l.status === "pending").length;
+  const approvedLeavesList = leaves.filter(l => l.status === "approved" && new Date(l.start_date).getFullYear() === new Date().getFullYear());
+  const pendingLeavesCount = leaves.filter((l) => l.status === "pending").length;
+  const rejectedLeavesCount = leaves.filter((l) => l.status === "rejected").length;
   const latestPayslip = payslips[0];
 
   const usedLeaves = {
-    sick: relevantLeaves.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    casual: relevantLeaves.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    earned: relevantLeaves.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    maternity: relevantLeaves.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    paternity: relevantLeaves.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    sick: approvedLeavesList.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    casual: approvedLeavesList.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: approvedLeavesList.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    maternity: approvedLeavesList.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    paternity: approvedLeavesList.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
 
   const availableLeaves = {
@@ -58,7 +59,9 @@ export default function EmployeeDashboard() {
     paternity: usedLeaves.paternity,
   };
 
-  const totalAvailable = employee?.leave_balance ?? 20;
+  const totalPolicy = (policy?.max_sick || 4) + (policy?.max_casual || 6) + (policy?.max_earned || 14);
+  const totalUsedApproved = Object.values(usedLeaves).reduce((acc, curr) => acc + curr, 0);
+  const totalAvailable = totalPolicy - totalUsedApproved;
 
   const statusColors = {
     pending: "bg-amber-100 text-amber-700",
@@ -75,7 +78,8 @@ export default function EmployeeDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Available" value={`${totalAvailable} days`} icon={CalendarDays} color="indigo" subtitle="Remaining Leave Balance" />
-        <StatCard title="Pending Leaves" value={pendingLeaves} icon={Clock} color="amber" subtitle="Awaiting administrative action" />
+        <StatCard title="Pending Leaves" value={pendingLeavesCount} icon={Clock} color="amber" subtitle="Awaiting administrative action" />
+        <StatCard title="Rejected Leaves" value={rejectedLeavesCount} icon={XCircle} color="rose" subtitle="Requests not approved" />
         <StatCard title="Total Payslips" value={payslips.length} icon={FileText} color="blue" subtitle="Historical records" />
         <StatCard title="Last Net Pay" value={latestPayslip ? `₹${latestPayslip.net_salary?.toLocaleString()}` : "—"} icon={IndianRupee} color="emerald" subtitle={latestPayslip ? `Paid for ${latestPayslip.month}` : "No payslips generated"} />
       </div>

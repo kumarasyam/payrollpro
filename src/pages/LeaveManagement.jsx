@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, CheckCircle2, XCircle, Clock, Eye, AlertTriangle, FileImage, Briefcase } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, eachDayOfInterval } from "date-fns";
 import { toast } from "sonner";
 
 // Fixed company policy (mirrors LeavePolicy.jsx constants)
@@ -48,8 +48,13 @@ export default function LeaveManagement() {
     mutationFn: ({ id, data }) => appClient.entities.LeaveApplication.update(id, data),
     onSuccess: () => { 
         qc.invalidateQueries({ queryKey: ["leaves"] }); 
+        qc.invalidateQueries({ queryKey: ["leaves-all"] });
+        qc.invalidateQueries({ queryKey: ["my-leaves"] });
+        qc.invalidateQueries({ queryKey: ["attendance"] });
+        qc.invalidateQueries({ queryKey: ["my-employee"] });
         setSelected(null); 
         setRemarks(""); 
+        toast.success("Leave status updated and dashboards refreshed");
     },
   });
 
@@ -74,11 +79,53 @@ export default function LeaveManagement() {
     }
   }, [leaves, policy]);
 
-  const handleAction = (status) => {
+  const handleAction = async (status) => {
     if (status === "rejected" && !remarks.trim()) {
       toast.error("Please provide a reason for rejection.");
       return;
     }
+    
+    // Sync Attendance
+    try {
+      const days = eachDayOfInterval({
+        start: new Date(selected.start_date),
+        end: new Date(selected.end_date)
+      });
+      
+      const attendanceStatus = status === "approved" ? "on_leave" : "absent";
+      
+      // Fetch existing attendance to avoid duplicates
+      const existingAtt = await appClient.entities.Attendance.filter({ 
+        employee_email: selected.employee_email 
+      });
+
+      for (const day of days) {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const existing = existingAtt.find(a => a.date === dateStr);
+        
+        if (existing) {
+          await appClient.entities.Attendance.update(existing.id, { 
+            status: attendanceStatus,
+            notes: `Leave ${status}: ${remarks || selected.reason}`
+          });
+        } else {
+          await appClient.entities.Attendance.create({
+            employee_name: selected.employee_name,
+            employee_email: selected.employee_email,
+            department: selected.department,
+            date: dateStr,
+            status: attendanceStatus,
+            notes: `Leave ${status}: ${remarks || selected.reason}`,
+            worked_hours: 0,
+            overtime_hours: 0
+          });
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["attendance"] });
+    } catch (err) {
+      console.error("Attendance sync failed:", err);
+    }
+
     updateMutation.mutate({ id: selected.id, data: { status, remarks: remarks } });
   };
 
@@ -143,7 +190,7 @@ export default function LeaveManagement() {
                         <TableCell className="text-slate-600 font-medium">
                           <div className="space-y-1">
                             {(() => {
-                              const empLeaves = leaves.filter(l => l.employee_email === emp.email && l.status !== 'rejected');
+                              const empLeaves = leaves.filter(l => l.employee_email === emp.email && l.status === 'approved');
                               const usedSick = empLeaves.filter(l => l.leave_type === 'sick').reduce((s, c) => s + (c.days || 0), 0);
                               const usedCasual = empLeaves.filter(l => l.leave_type === 'casual').reduce((s, c) => s + (c.days || 0), 0);
                               const usedEarned = empLeaves.filter(l => l.leave_type === 'earned').reduce((s, c) => s + (c.days || 0), 0);
