@@ -188,7 +188,7 @@ CREATE TABLE dbo.Attendance (
     department          NVARCHAR(100)   NULL,
     date                DATE            NOT NULL,
     status              NVARCHAR(20)    NOT NULL DEFAULT 'present'
-                        CHECK (status IN ('present', 'absent', 'half_day', 'on_leave', 'holiday')),
+                        CHECK (status IN ('present', 'half_day', 'on_leave', 'holiday')),
     check_in            TIME            NULL,
     check_out           TIME            NULL,
     worked_hours        DECIMAL(4,1)    NOT NULL DEFAULT 0,
@@ -625,19 +625,10 @@ BEGIN
     SET @Special = @Base - (@Basic + @HRA + @Conveyance);
     SET @Gross   = @Base + @Bonus;
     
-    -- New Progressive Tax Slabs (Indian New Regime FY 2024-25)
-    IF @AnnualSalary > 1500000 
-        SET @AnnualTax = 150000 + (@AnnualSalary - 1500000) * 0.30;
-    ELSE IF @AnnualSalary > 1200000 
-        SET @AnnualTax = 90000 + (@AnnualSalary - 1200000) * 0.20;
-    ELSE IF @AnnualSalary > 900000 
-        SET @AnnualTax = 45000 + (@AnnualSalary - 900000) * 0.15;
-    ELSE IF @AnnualSalary > 600000 
-        SET @AnnualTax = 15000 + (@AnnualSalary - 600000) * 0.10;
-    ELSE IF @AnnualSalary > 300000 
-        SET @AnnualTax = (@AnnualSalary - 300000) * 0.05;
+    IF @AnnualSalary > 400000 
+        SET @AnnualTax = (400000 * 0.10) + ((@AnnualSalary - 400000) * 0.15);
     ELSE 
-        SET @AnnualTax = 0;
+        SET @AnnualTax = @AnnualSalary * 0.10;
     
     SET @MonthlyTax = @AnnualTax / 12;
     SET @PF  = @Basic * 0.12;

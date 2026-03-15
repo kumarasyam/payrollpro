@@ -10,7 +10,7 @@ import { Calendar, Clock, CheckCircle2, XCircle, Timer, AlertCircle } from "luci
 const statusColors = {
     pending: "bg-slate-100 text-slate-600",
     present: "bg-emerald-100 text-emerald-700",
-    absent: "bg-rose-100 text-rose-700",
+
     half_day: "bg-amber-100 text-amber-700",
     on_leave: "bg-blue-100 text-blue-700",
     holiday: "bg-purple-100 text-purple-700",
@@ -19,7 +19,7 @@ const statusColors = {
 const statusIcons = {
     pending: <Clock className="h-4 w-4 text-slate-600" />,
     present: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
-    absent: <XCircle className="h-4 w-4 text-rose-600" />,
+
     half_day: <AlertCircle className="h-4 w-4 text-amber-600" />,
     on_leave: <Calendar className="h-4 w-4 text-blue-600" />,
     holiday: <Calendar className="h-4 w-4 text-purple-600" />,
@@ -40,7 +40,7 @@ export default function MyAttendance() {
         : attendance;
 
     const presentDays = attendance.filter(a => a.status === "present").length;
-    const absentDays = attendance.filter(a => a.status === "absent").length;
+
     const halfDays = attendance.filter(a => a.status === "half_day").length;
     const totalOvertime = attendance.reduce((s, a) => s + (a.overtime_hours || 0), 0);
     const avgHours = attendance.length > 0
@@ -65,13 +65,7 @@ export default function MyAttendance() {
                         <p className="text-xs text-slate-500 uppercase font-bold tracking-tight">Present</p>
                     </CardContent>
                 </Card>
-                <Card className="border-0 shadow-sm">
-                    <CardContent className="p-4 text-center">
-                        <XCircle className="h-6 w-6 text-rose-500 mx-auto" />
-                        <p className="text-2xl font-bold text-slate-900 mt-2">{absentDays}</p>
-                        <p className="text-xs text-slate-500 uppercase font-bold tracking-tight">Absent</p>
-                    </CardContent>
-                </Card>
+
                 <Card className="border-0 shadow-sm">
                     <CardContent className="p-4 text-center">
                         <AlertCircle className="h-6 w-6 text-amber-500 mx-auto" />

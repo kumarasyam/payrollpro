@@ -48,13 +48,8 @@ export default function LeaveManagement() {
     mutationFn: ({ id, data }) => appClient.entities.LeaveApplication.update(id, data),
     onSuccess: () => { 
         qc.invalidateQueries({ queryKey: ["leaves"] }); 
-        qc.invalidateQueries({ queryKey: ["leaves-all"] });
-        qc.invalidateQueries({ queryKey: ["my-leaves"] });
-        qc.invalidateQueries({ queryKey: ["attendance"] });
-        qc.invalidateQueries({ queryKey: ["my-employee"] });
         setSelected(null); 
         setRemarks(""); 
-        toast.success("Leave status updated and dashboards refreshed");
     },
   });
 
@@ -92,7 +87,8 @@ export default function LeaveManagement() {
         end: new Date(selected.end_date)
       });
       
-      const attendanceStatus = status === "approved" ? "on_leave" : "absent";
+      if (status !== "approved") return;
+      const attendanceStatus = "on_leave";
       
       // Fetch existing attendance to avoid duplicates
       const existingAtt = await appClient.entities.Attendance.filter({ 
@@ -124,6 +120,21 @@ export default function LeaveManagement() {
       qc.invalidateQueries({ queryKey: ["attendance"] });
     } catch (err) {
       console.error("Attendance sync failed:", err);
+    }
+
+    if (status === "approved") {
+      const targetEmp = employees.find(e => e.email === selected.employee_email);
+      if (targetEmp) {
+        try {
+          await appClient.entities.Employee.update(targetEmp.id, {
+            leave_balance: Math.max(0, (targetEmp.leave_balance || 0) - (selected.days || 0))
+          });
+          qc.invalidateQueries({ queryKey: ["employees"] });
+        } catch (err) {
+          console.error("Failed to update employee balance:", err);
+          toast.error("Leave approved, but failed to update balance record.");
+        }
+      }
     }
 
     updateMutation.mutate({ id: selected.id, data: { status, remarks: remarks } });

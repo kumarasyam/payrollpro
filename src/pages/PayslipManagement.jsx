@@ -35,15 +35,25 @@ const calculateSalary = (annualSalary) => {
 
     let annualTax = 0;
     if (annualSalary > 1500000) {
-        annualTax = 150000 + (annualSalary - 1500000) * 0.30;
+        annualTax += (annualSalary - 1500000) * 0.30;
+        annualTax += (1500000 - 1200000) * 0.20;
+        annualTax += (1200000 - 900000) * 0.15;
+        annualTax += (900000 - 600000) * 0.10;
+        annualTax += (600000 - 300000) * 0.05;
     } else if (annualSalary > 1200000) {
-        annualTax = 90000 + (annualSalary - 1200000) * 0.20;
+        annualTax += (annualSalary - 1200000) * 0.20;
+        annualTax += (1200000 - 900000) * 0.15;
+        annualTax += (900000 - 600000) * 0.10;
+        annualTax += (600000 - 300000) * 0.05;
     } else if (annualSalary > 900000) {
-        annualTax = 45000 + (annualSalary - 900000) * 0.15;
+        annualTax += (annualSalary - 900000) * 0.15;
+        annualTax += (900000 - 600000) * 0.10;
+        annualTax += (600000 - 300000) * 0.05;
     } else if (annualSalary > 600000) {
-        annualTax = 15000 + (annualSalary - 600000) * 0.10;
+        annualTax += (annualSalary - 600000) * 0.10;
+        annualTax += (600000 - 300000) * 0.05;
     } else if (annualSalary > 300000) {
-        annualTax = (annualSalary - 300000) * 0.05;
+        annualTax += (annualSalary - 300000) * 0.05;
     }
 
     const monthlyTax = annualTax / 12;
@@ -260,7 +270,7 @@ export default function PayslipManagement() {
                   const joiningDateStr = emp.date_of_joining || emp.created_date;
                   if (joiningDateStr) {
                     const joiningDate = parseISO(joiningDateStr);
-                    const firstMonth = startOfMonth(joiningDate);
+                    const firstMonth = addMonths(startOfMonth(joiningDate), 1);
                     const currentMonth = startOfMonth(new Date()); 
                     
                     const eligibleMonths = [];
@@ -291,9 +301,9 @@ export default function PayslipManagement() {
                 const joiningDateStr = emp.date_of_joining || emp.created_date;
                 if (!joiningDateStr) return <p className="text-xs text-rose-500">Error: Joining date missing for employee</p>;
 
-                // Calculate eligible months: Starting from Joining Month, up to current month
+                // Calculate eligible months: Starting from Month AFTER joining, up to current month
                 const joiningDate = parseISO(joiningDateStr);
-                const firstMonth = startOfMonth(joiningDate);
+                const firstMonth = addMonths(startOfMonth(joiningDate), 1);
                 const currentMonth = startOfMonth(new Date()); 
                 
                 const eligibleMonths = [];
@@ -305,7 +315,7 @@ export default function PayslipManagement() {
                 eligibleMonths.reverse();
 
                 if (eligibleMonths.length === 0) {
-                  return <p className="text-xs text-amber-600 mt-1">No eligible months yet</p>;
+                  return <p className="text-xs text-amber-600 mt-1">No eligible months yet (payslips start 1 month after joining)</p>;
                 }
 
                 return (

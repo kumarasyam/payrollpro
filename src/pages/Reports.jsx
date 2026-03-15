@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -302,7 +302,7 @@ export default function Reports() {
                                     <TableRow>
                                         <TableHead>Employee</TableHead>
                                         <TableHead>Present Days</TableHead>
-                                        <TableHead>Absent Days</TableHead>
+
                                         <TableHead>Half Days</TableHead>
                                         <TableHead>Total Overtime</TableHead>
                                         <TableHead>Avg Hours/Day</TableHead>
@@ -314,7 +314,7 @@ export default function Reports() {
                                     ) : employees.map(e => {
                                         const empAtt = attendance.filter(a => a.employee_email === e.email);
                                         const present = empAtt.filter(a => a.status === "present").length;
-                                        const absent = empAtt.filter(a => a.status === "absent").length;
+
                                         const halfDay = empAtt.filter(a => a.status === "half_day").length;
                                         const totalOT = empAtt.reduce((s, a) => s + (a.overtime_hours || 0), 0);
                                         const avgHrs = empAtt.length > 0 ? empAtt.reduce((s, a) => s + (a.worked_hours || 0), 0) / empAtt.length : 0;
@@ -324,7 +324,7 @@ export default function Reports() {
                                                     <div><p className="font-medium">{e.full_name}</p><p className="text-xs text-slate-400">{e.department}</p></div>
                                                 </TableCell>
                                                 <TableCell className="text-emerald-600 font-medium">{present}</TableCell>
-                                                <TableCell className="text-rose-600 font-medium">{absent}</TableCell>
+
                                                 <TableCell className="text-amber-600 font-medium">{halfDay}</TableCell>
                                                 <TableCell className="text-purple-600 font-medium">{totalOT}h</TableCell>
                                                 <TableCell className="font-medium">{Math.round(avgHrs * 10) / 10}h</TableCell>

@@ -450,7 +450,7 @@ function seedLocalFallbackData() {
   // Attendance
   const ak = 'payrollpro_Attendance';
   if (!localStorage.getItem(ak) || JSON.parse(localStorage.getItem(ak)).length === 0) {
-    const sts = ['present', 'present', 'present', 'present', 'present', 'present', 'absent', 'half_day', 'on_leave', 'present'];
+    const sts = ['present', 'present', 'present', 'present', 'present', 'present', 'present', 'half_day', 'on_leave', 'present'];
     localStorage.setItem(ak, JSON.stringify(allEmployees.map(([name, dept], i) => {
       const st = sts[i % sts.length], isW = st === 'present' || st === 'half_day';
       const ciH = 8 + (i % 3), ciM = (i * 5) % 60, coH = st === 'half_day' ? 13 : 17 + (i % 3), coM = (i * 7) % 60;
@@ -461,7 +461,7 @@ function seedLocalFallbackData() {
         check_in: isW ? `${String(ciH).padStart(2, '0')}:${String(ciM).padStart(2, '0')}` : null,
         check_out: isW ? `${String(coH).padStart(2, '0')}:${String(coM).padStart(2, '0')}` : null,
         worked_hours: w, overtime_hours: isW ? Math.max(0, Math.round((w - 8) * 10) / 10) : 0,
-        notes: st === 'absent' ? 'Not available' : st === 'on_leave' ? 'On leave' : '', created_date: now, updated_date: now
+        notes: st === 'on_leave' ? 'On leave' : '', created_date: now, updated_date: now
       };
     })));
   }

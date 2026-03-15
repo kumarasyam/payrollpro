@@ -15,7 +15,7 @@ import { format } from "date-fns";
 
 const statusColors = {
     present: "bg-emerald-100 text-emerald-700",
-    absent: "bg-rose-100 text-rose-700",
+
     half_day: "bg-amber-100 text-amber-700",
     on_leave: "bg-blue-100 text-blue-700",
     holiday: "bg-purple-100 text-purple-700",
@@ -110,7 +110,7 @@ export default function AttendanceManagement() {
     });
 
     const todayPresent = attendance.filter(a => a.date === format(new Date(), "yyyy-MM-dd") && a.status === "present").length;
-    const todayAbsent = attendance.filter(a => a.date === format(new Date(), "yyyy-MM-dd") && a.status === "absent").length;
+
     const totalOvertime = filtered.reduce((sum, a) => sum + (a.overtime_hours || 0), 0);
 
     return (
@@ -137,17 +137,7 @@ export default function AttendanceManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-0 shadow-sm">
-                    <CardContent className="p-4 flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-rose-50 flex items-center justify-center">
-                            <XCircle className="h-5 w-5 text-rose-600" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-500">Absent Today</p>
-                            <p className="text-xl font-bold text-slate-900">{todayAbsent}</p>
-                        </div>
-                    </CardContent>
-                </Card>
+
                 <Card className="border-0 shadow-sm">
                     <CardContent className="p-4 flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
@@ -183,7 +173,7 @@ export default function AttendanceManagement() {
                          <SelectContent>
                               <SelectItem value="all">All Statuses</SelectItem>
                               <SelectItem value="present">Present</SelectItem>
-                              <SelectItem value="absent">Absent</SelectItem>
+
                               <SelectItem value="on_leave">On Leave</SelectItem>
                               <SelectItem value="half_day">Half Day</SelectItem>
                               <SelectItem value="holiday">Holiday</SelectItem>
@@ -234,7 +224,7 @@ export default function AttendanceManagement() {
                                         <TableCell className="text-right">
                                             {rec.status === 'pending' && (
                                                 <div className="flex gap-1 justify-end">
-                                                    <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => handleAction(rec, 'absent')}>Reject</Button>
+
                                                     <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => handleAction(rec, 'present')}>Approve</Button>
                                                 </div>
                                             )}
@@ -271,7 +261,7 @@ export default function AttendanceManagement() {
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="present">Present</SelectItem>
-                                        <SelectItem value="absent">Absent</SelectItem>
+
                                         <SelectItem value="half_day">Half Day</SelectItem>
                                         <SelectItem value="on_leave">On Leave</SelectItem>
                                         <SelectItem value="holiday">Holiday</SelectItem>

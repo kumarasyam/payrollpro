@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, FileText, IndianRupee, Clock } from "lucide-react";
+import { CalendarDays, FileText, IndianRupee, Clock, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import StatCard from "@/components/dashboard/StatCard";
 
@@ -59,9 +59,7 @@ export default function EmployeeDashboard() {
     paternity: usedLeaves.paternity,
   };
 
-  const totalPolicy = (policy?.max_sick || 4) + (policy?.max_casual || 6) + (policy?.max_earned || 14);
-  const totalUsedApproved = Object.values(usedLeaves).reduce((acc, curr) => acc + curr, 0);
-  const totalAvailable = totalPolicy - totalUsedApproved;
+  const totalAvailable = employee?.leave_balance ?? 24;
 
   const statusColors = {
     pending: "bg-amber-100 text-amber-700",

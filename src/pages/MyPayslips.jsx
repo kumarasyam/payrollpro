@@ -11,6 +11,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import PayslipDocument from "@/components/PayslipDocument";
 import { toast } from "sonner";
+import { format, addMonths, isAfter } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const statusColors = {
   draft: "bg-slate-100 text-slate-600",
@@ -30,7 +32,22 @@ export default function MyPayslips() {
     enabled: !!user?.email,
   });
 
+  const { data: employee } = useQuery({
+    queryKey: ["my-employee", user?.email],
+    queryFn: () => appClient.entities.Employee.filter({ email: user?.email }),
+    enabled: !!user?.email,
+    select: (data) => data?.[0],
+  });
+
+  const joiningDate = employee?.date_of_joining ? new Date(employee.date_of_joining) : null;
+  const eligibleDate = joiningDate ? addMonths(joiningDate, 1) : null;
+  const isEligible = eligibleDate ? isAfter(new Date(), eligibleDate) : false;
+
   const handleDownload = (slip) => {
+    if (!isEligible) {
+      toast.error(`Downloads available after ${format(eligibleDate, "PPP")} (1 month from joining)`);
+      return;
+    }
     setDownloadingSlip(slip);
     const toastId = toast.loading("Generating PDF...");
     setTimeout(async () => {
@@ -94,9 +111,27 @@ export default function MyPayslips() {
                       <Button variant="outline" size="icon" onClick={() => setSelected(slip)} className="h-10 w-10">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" onClick={() => handleDownload(slip)} className="h-10 w-10 bg-indigo-600 hover:bg-indigo-700">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Button 
+                                size="icon" 
+                                onClick={() => handleDownload(slip)} 
+                                className={`h-10 w-10 ${isEligible ? "bg-indigo-600 hover:bg-indigo-700" : "bg-slate-200 cursor-not-allowed text-slate-400"}`}
+                                disabled={!isEligible}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {!isEligible && (
+                            <TooltipContent>
+                              <p>Available after {eligibleDate ? format(eligibleDate, "PP") : "1 month of service"}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
                 </div>
@@ -112,8 +147,13 @@ export default function MyPayslips() {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2"><FileText className="h-5 w-5" /> Payslip — {selected?.month}</span>
-              <Button size="sm" onClick={() => handleDownload(selected)} className="bg-indigo-600 hover:bg-indigo-700">
-                <Download className="h-4 w-4 mr-1" /> Download
+              <Button 
+                size="sm" 
+                onClick={() => handleDownload(selected)} 
+                className={isEligible ? "bg-indigo-600 hover:bg-indigo-700" : "bg-slate-200 text-slate-400 cursor-not-allowed"}
+                disabled={!isEligible}
+              >
+                <Download className="h-4 w-4 mr-1" /> {isEligible ? "Download" : `Locked until ${eligibleDate ? format(eligibleDate, "MMM d") : "1 Month"}`}
               </Button>
             </DialogTitle>
           </DialogHeader>
