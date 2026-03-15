@@ -29,20 +29,20 @@ const PayslipDocument = forwardRef(({ slip }, ref) => {
         { label: "DA", amount: 0 },
         { label: "HRA", amount: slip.hra },
         { label: "MEDICAL ALLOWANCE", amount: slip.medical_allowance },
-        { label: "TRANSPORT ALLOWANCE", amount: slip.transport_allowance },
+        { label: "CONVEYANCE / TRANSPORT", amount: slip.transport_allowance },
         { label: "OTHER ALLOWANCE", amount: 0 },
-        { label: "GROSS TOTAL", amount: slip.gross_salary, isBold: true },
+        { label: "GROSS TOTAL", amount: slip.gross_salary - (slip.bonus || 0), isBold: true },
         { label: "BONUS", amount: slip.bonus },
-        { label: "SPECIAL ALLOWANCE", amount: 0 },
-        { label: "SUB TOTAL", amount: slip.gross_salary + (slip.bonus || 0), isBold: true },
+        { label: "SPECIAL ALLOWANCE", amount: slip.special_allowance || 0 },
+        { label: "SUB TOTAL", amount: slip.gross_salary, isBold: true },
         { label: "ALLOWANCE", amount: 0 }
     ];
 
     const deductions = [
-        { label: "PF", amount: slip.provident_fund },
+        { label: "PF (12% of Basic)", amount: slip.provident_fund },
         { label: "ESI", amount: 0 },
         { label: "TDS / TAX", amount: slip.tax_deduction },
-        { label: "PROFESSIONAL TAX", amount: 0 },
+        { label: "PROFESSIONAL TAX", amount: slip.professional_tax || 0 },
         { label: "CUG", amount: 0 },
         { label: "CANTEEN CHARGES", amount: 0 },
         { label: "LWF", amount: 0 },

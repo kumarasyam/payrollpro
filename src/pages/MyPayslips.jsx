@@ -128,8 +128,9 @@ export default function MyPayslips() {
                 <div className="text-sm space-y-1.5 bg-emerald-50/50 rounded-lg p-3">
                   <div className="flex justify-between"><span className="text-slate-500">Base Salary</span><span>₹{selected.base_salary?.toLocaleString()}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">HRA</span><span>₹{selected.hra?.toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Transport Allowance</span><span>₹{selected.transport_allowance?.toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Medical Allowance</span><span>₹{selected.medical_allowance?.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Conveyance / Transport</span><span>₹{selected.transport_allowance?.toLocaleString()}</span></div>
+                  {selected.special_allowance > 0 && <div className="flex justify-between"><span className="text-slate-500">Special Allowance</span><span>₹{selected.special_allowance?.toLocaleString()}</span></div>}
+                  {selected.medical_allowance > 0 && <div className="flex justify-between"><span className="text-slate-500">Medical Allowance</span><span>₹{selected.medical_allowance?.toLocaleString()}</span></div>}
                   {selected.bonus > 0 && <div className="flex justify-between"><span className="text-slate-500">Bonus</span><span className="text-emerald-600 font-medium">₹{selected.bonus?.toLocaleString()}</span></div>}
                   <div className="flex justify-between font-semibold pt-2 border-t border-emerald-200"><span>Gross Salary</span><span>₹{selected.gross_salary?.toLocaleString()}</span></div>
                 </div>
@@ -139,6 +140,7 @@ export default function MyPayslips() {
                 <div className="text-sm space-y-1.5 bg-rose-50/50 rounded-lg p-3">
                   <div className="flex justify-between"><span className="text-slate-500">Tax</span><span className="text-rose-600">₹{selected.tax_deduction?.toLocaleString()}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">Provident Fund</span><span className="text-rose-600">₹{selected.provident_fund?.toLocaleString()}</span></div>
+                  {selected.professional_tax > 0 && <div className="flex justify-between"><span className="text-slate-500">Professional Tax</span><span className="text-rose-600">₹{selected.professional_tax?.toLocaleString()}</span></div>}
                   {selected.other_deductions > 0 && <div className="flex justify-between"><span className="text-slate-500">Other</span><span className="text-rose-600">₹{selected.other_deductions?.toLocaleString()}</span></div>}
                   <div className="flex justify-between font-semibold pt-2 border-t border-rose-200"><span>Total Deductions</span><span className="text-rose-600">₹{selected.total_deductions?.toLocaleString()}</span></div>
                 </div>

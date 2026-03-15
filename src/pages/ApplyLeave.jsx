@@ -213,9 +213,9 @@ export default function ApplyLeave() {
     : 0;
 
   const usedLeaves = {
-    sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    sick: leaves.filter(l => l.leave_type === 'sick' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    casual: leaves.filter(l => l.leave_type === 'casual' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: leaves.filter(l => l.leave_type === 'earned' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
 
   const needsDocument = form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 1);

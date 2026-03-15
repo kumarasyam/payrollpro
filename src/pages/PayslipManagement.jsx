@@ -22,6 +22,37 @@ const statusColors = {
   paid: "bg-indigo-100 text-indigo-700",
 };
 
+// Standard salary calculation logic as per user request
+const calculateSalary = (annualSalary) => {
+    const monthlySalary = annualSalary / 12;
+    const basic = monthlySalary * 0.40;
+    const hra = basic * 0.50;
+    const conveyance = 2000;
+    const specialAllowance = monthlySalary - (basic + hra + conveyance);
+    const grossSalary = basic + hra + conveyance + specialAllowance;
+    const pf = basic * 0.12;
+    const professionalTax = 200;
+
+    let annualTax = 0;
+    if (annualSalary > 400000) {
+        const firstSlab = 400000 * 0.10;
+        const remaining = annualSalary - 400000;
+        const secondSlab = remaining * 0.15;
+        annualTax = firstSlab + secondSlab;
+    } else {
+        annualTax = annualSalary * 0.10;
+    }
+
+    const monthlyTax = annualTax / 12;
+    const totalDeductions = pf + professionalTax + monthlyTax;
+    const netSalary = grossSalary - totalDeductions;
+
+    return {
+        basic, hra, conveyance, specialAllowance, grossSalary,
+        pf, professionalTax, monthlyTax, totalDeductions, netSalary
+    };
+};
+
 export default function PayslipManagement() {
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -71,42 +102,36 @@ export default function PayslipManagement() {
       return;
     }
     
-    const base = emp.base_salary || 0;
-    const hra = base * 0.2;
-    const transport = 200;
-    const medical = 150;
+    // Calculate using the new logic
+    // We assume emp.base_salary is the targeted monthly gross for the employee
+    const annualSalary = (emp.base_salary || 0) * 12;
+    const calc = calculateSalary(annualSalary);
+    
     const bonus = parseFloat(form.bonus) || 0;
-    const grossMonthly = base + hra + transport + medical + bonus;
-    
-    // Tax Calculation logic (Monthly Slab based)
-    const annualGross = grossMonthly * 12;
-    let annualTax = 0;
-    if (annualGross <= 400000) {
-      annualTax = annualGross * 0.1;
-    } else {
-      annualTax = (400000 * 0.1) + ((annualGross - 400000) * 0.15);
-    }
-    const taxMonthly = annualTax / 12;
-    const pfMonthly = base * 0.125;
-    
     const otherDed = form.other_deductions || 0;
-    const totalDed = taxMonthly + pfMonthly + otherDed;
-    const net = grossMonthly - totalDed;
+    
+    const finalGross = calc.grossSalary + bonus;
+    const finalTotalDed = calc.totalDeductions + otherDed;
+    const finalNet = finalGross - finalTotalDed;
 
     createMutation.mutate({
       employee_name: emp.full_name,
       employee_email: emp.email,
       department: emp.department,
       month: form.month,
-      base_salary: base,
-      hra, transport_allowance: transport, medical_allowance: medical,
+      base_salary: calc.basic,
+      hra: calc.hra, 
+      transport_allowance: calc.conveyance, 
+      medical_allowance: 0,
+      special_allowance: calc.specialAllowance,
       bonus, 
-      tax_deduction: Math.round(taxMonthly * 100) / 100,
-      provident_fund: Math.round(pfMonthly * 100) / 100,
+      tax_deduction: Math.round(calc.monthlyTax * 100) / 100,
+      provident_fund: Math.round(calc.pf * 100) / 100,
+      professional_tax: calc.professionalTax,
       other_deductions: otherDed,
-      gross_salary: Math.round(grossMonthly * 100) / 100,
-      total_deductions: Math.round(totalDed * 100) / 100,
-      net_salary: Math.round(net * 100) / 100,
+      gross_salary: Math.round(finalGross * 100) / 100,
+      total_deductions: Math.round(finalTotalDed * 100) / 100,
+      net_salary: Math.round(finalNet * 100) / 100,
       status: form.status,
     });
   };
@@ -293,39 +318,26 @@ export default function PayslipManagement() {
             {(() => {
               const emp = employees.find((e) => e.email === form.employee_email);
               if (!emp) return null;
-              const base = emp.base_salary || 0;
-              const hra = base * 0.2;
-              const transport = 200;
-              const medical = 150;
-              const gross = base + hra + transport + medical;
-              const tax = gross * 0.1;
-              const pf = base * 0.12;
+              
+              const annualSalary = (emp.base_salary || 0) * 12;
+              const calc = calculateSalary(annualSalary);
+              
               return (
                 <div className="bg-slate-50 p-4 rounded-lg space-y-2 text-sm border">
                   <h4 className="font-semibold text-slate-700 mb-2 border-b pb-2">Calculated Breakdown</h4>
-                  <div className="flex justify-between text-slate-600"><span>Monthly Base:</span> <span>₹{Math.round(base).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-slate-600"><span>Allowances:</span> <span>₹{Math.round(hra + transport + medical).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-slate-900 font-medium"><span>Gross Monthly:</span> <span>₹{Math.round(base + hra + transport + medical).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>Basic (40%):</span> <span>₹{Math.round(calc.basic).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>HRA (50% of Basic):</span> <span>₹{Math.round(calc.hra).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>Conveyance:</span> <span>₹{Math.round(calc.conveyance).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>Special Allowance:</span> <span>₹{Math.round(calc.specialAllowance).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-900 font-bold pt-1 border-t"><span>Gross Monthly:</span> <span>₹{Math.round(calc.grossSalary).toLocaleString()}</span></div>
                   
-                  {(() => {
-                    const grossM = base + hra + transport + medical;
-                    const annualG = grossM * 12;
-                    let annualT = 0;
-                    if (annualG <= 400000) annualT = annualG * 0.1;
-                    else annualT = (400000 * 0.1) + ((annualG - 400000) * 0.15);
-                    const monthlyT = annualT / 12;
-                    const monthlyPF = base * 0.125;
-                    return (
-                      <>
-                        <div className="flex justify-between text-rose-600 mt-2"><span>Monthly Tax (Slab based):</span> <span>-₹{Math.round(monthlyT).toLocaleString()}</span></div>
-                        <div className="flex justify-between text-rose-600"><span>PF (12.5% of base):</span> <span>-₹{Math.round(monthlyPF).toLocaleString()}</span></div>
-                        <div className="flex justify-between font-bold pt-2 border-t text-indigo-700">
-                          <span>Estimated Net:</span> 
-                          <span>₹{Math.round(grossM - monthlyT - monthlyPF).toLocaleString()}</span>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  <div className="flex justify-between text-rose-600 mt-2"><span>Monthly Tax:</span> <span>-₹{Math.round(calc.monthlyTax).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-rose-600"><span>PF (12% of Basic):</span> <span>-₹{Math.round(calc.pf).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-rose-600"><span>Prof. Tax:</span> <span>-₹{calc.professionalTax}</span></div>
+                  <div className="flex justify-between font-bold pt-2 border-t text-indigo-700">
+                    <span>Estimated Net:</span> 
+                    <span>₹{Math.round(calc.netSalary).toLocaleString()}</span>
+                  </div>
                 </div>
               );
             })()}
@@ -368,6 +380,7 @@ export default function PayslipManagement() {
                   <div className="flex justify-between"><span className="text-slate-500">Medical</span><span>₹{selected.medical_allowance?.toLocaleString()}</span></div>
                   {selected.bonus > 0 && <div className="flex justify-between"><span className="text-slate-500">Bonus</span><span className="text-emerald-600">₹{selected.bonus?.toLocaleString()}</span></div>}
                   <div className="flex justify-between font-medium pt-1 border-t"><span>Gross Salary</span><span>₹{selected.gross_salary?.toLocaleString()}</span></div>
+                  {selected.special_allowance > 0 && <div className="flex justify-between"><span className="text-slate-500">Special Allowance</span><span>₹{selected.special_allowance?.toLocaleString()}</span></div>}
                 </div>
               </div>
               <div className="border-t pt-3 space-y-2">
@@ -375,6 +388,7 @@ export default function PayslipManagement() {
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between"><span className="text-slate-500">Tax</span><span className="text-rose-600">₹{selected.tax_deduction?.toLocaleString()}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">Provident Fund</span><span className="text-rose-600">₹{selected.provident_fund?.toLocaleString()}</span></div>
+                  {selected.professional_tax > 0 && <div className="flex justify-between"><span className="text-slate-500">Prof. Tax</span><span className="text-rose-600">₹{selected.professional_tax?.toLocaleString()}</span></div>}
                   {selected.other_deductions > 0 && <div className="flex justify-between"><span className="text-slate-500">Other</span><span className="text-rose-600">₹{selected.other_deductions?.toLocaleString()}</span></div>}
                   <div className="flex justify-between font-medium pt-1 border-t"><span>Total Deductions</span><span className="text-rose-600">₹{selected.total_deductions?.toLocaleString()}</span></div>
                 </div>

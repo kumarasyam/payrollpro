@@ -612,29 +612,35 @@ BEGIN
     SELECT @Name = full_name, @Dept = department, @Base = base_salary
     FROM dbo.Employees WHERE email = @EmployeeEmail;
 
+    -- New Calculation as per requested calculateSalary code
+    DECLARE @Basic DECIMAL(18,2), @HRA DECIMAL(18,2), @Conveyance DECIMAL(18,2) = 2000;
+    DECLARE @Special DECIMAL(18,2), @PF DECIMAL(18,2), @ProfTax DECIMAL(18,2) = 200;
+    DECLARE @MonthlyTax DECIMAL(18,2), @AnnualSalary DECIMAL(18,2), @AnnualTax DECIMAL(18,2);
+
     IF @Base IS NULL BEGIN RAISERROR('Employee not found', 16, 1); RETURN; END
 
-    SET @HRA   = ROUND(@Base * 0.20, 2);
-    SET @Gross = @Base + @HRA + 200 + 150 + @Bonus;
+    SET @AnnualSalary = @Base * 12;
+    SET @Basic   = @Base * 0.40;
+    SET @HRA     = @Basic * 0.50;
+    SET @Special = @Base - (@Basic + @HRA + @Conveyance);
+    SET @Gross   = @Base + @Bonus;
     
-    -- Slab-based tax calculation (Annual)
-    DECLARE @AnnualGross DECIMAL(18,2) = @Gross * 12;
-    DECLARE @AnnualTax DECIMAL(18,2);
-    IF @AnnualGross <= 400000 
-        SET @AnnualTax = @AnnualGross * 0.10;
+    IF @AnnualSalary > 400000 
+        SET @AnnualTax = (400000 * 0.10) + ((@AnnualSalary - 400000) * 0.15);
     ELSE 
-        SET @AnnualTax = (400000 * 0.10) + ((@AnnualGross - 400000) * 0.15);
+        SET @AnnualTax = @AnnualSalary * 0.10;
     
-    SET @Tax = ROUND(@AnnualTax / 12, 2);
-    SET @PF  = ROUND(@Base * 0.125, 2);
+    SET @MonthlyTax = @AnnualTax / 12;
+    SET @PF  = @Basic * 0.12;
 
     INSERT INTO dbo.Payslips (employee_name, employee_email, department, month,
-        base_salary, hra, transport_allowance, medical_allowance, bonus, gross_salary,
-        tax_deduction, provident_fund, other_deductions, total_deductions, net_salary, status)
+        base_salary, hra, transport_allowance, medical_allowance, special_allowance, bonus, gross_salary,
+        tax_deduction, provident_fund, professional_tax, other_deductions, total_deductions, net_salary, status)
     VALUES (@Name, @EmployeeEmail, @Dept, @Month,
-        @Base, @HRA, 200, 150, @Bonus, @Gross,
-        @Tax, @PF, @OtherDeductions, @Tax + @PF + @OtherDeductions,
-        @Gross - @Tax - @PF - @OtherDeductions, @Status);
+        @Basic, @HRA, @Conveyance, 0, @Special, @Bonus, @Gross,
+        @MonthlyTax, @PF, @ProfTax, @OtherDeductions, 
+        (@MonthlyTax + @PF + @ProfTax + @OtherDeductions),
+        (@Gross - (@MonthlyTax + @PF + @ProfTax + @OtherDeductions)), @Status);
 END
 GO
 

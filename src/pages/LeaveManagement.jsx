@@ -143,7 +143,7 @@ export default function LeaveManagement() {
                         <TableCell className="text-slate-600 font-medium">
                           <div className="space-y-1">
                             {(() => {
-                              const empLeaves = leaves.filter(l => l.employee_email === emp.email && l.status === 'approved');
+                              const empLeaves = leaves.filter(l => l.employee_email === emp.email && l.status !== 'rejected');
                               const usedSick = empLeaves.filter(l => l.leave_type === 'sick').reduce((s, c) => s + (c.days || 0), 0);
                               const usedCasual = empLeaves.filter(l => l.leave_type === 'casual').reduce((s, c) => s + (c.days || 0), 0);
                               const usedEarned = empLeaves.filter(l => l.leave_type === 'earned').reduce((s, c) => s + (c.days || 0), 0);

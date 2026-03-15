@@ -38,16 +38,16 @@ export default function EmployeeDashboard() {
     enabled: !!user?.email,
   });
 
-  const approvedLeaves = leaves.filter(l => l.status === "approved" && new Date(l.start_date).getFullYear() === new Date().getFullYear());
+  const relevantLeaves = leaves.filter(l => l.status !== "rejected" && new Date(l.start_date).getFullYear() === new Date().getFullYear());
   const pendingLeaves = leaves.filter((l) => l.status === "pending").length;
   const latestPayslip = payslips[0];
 
   const usedLeaves = {
-    sick: approvedLeaves.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + curr.days, 0),
-    casual: approvedLeaves.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + curr.days, 0),
-    earned: approvedLeaves.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + curr.days, 0),
-    maternity: approvedLeaves.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + curr.days, 0),
-    paternity: approvedLeaves.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + curr.days, 0),
+    sick: relevantLeaves.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    casual: relevantLeaves.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: relevantLeaves.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    maternity: relevantLeaves.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    paternity: relevantLeaves.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
 
   const availableLeaves = {
