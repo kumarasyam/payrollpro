@@ -1,148 +1,97 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Calendar, Clock, Users, Baby, UserCheck } from "lucide-react";
+import { Info, CheckCircle2 } from "lucide-react";
 
 // ── Fixed Company Leave Policy ─────────────────────────────────────────────────
-// These values are company-defined and cannot be changed by any user.
 const FIXED_POLICY = {
-    max_sick: 10,
-    max_casual: 10,
+    max_sick: 4,
+    max_casual: 6,
+    max_earned: 14,
     max_maternity: 168,   // 24 weeks
     max_paternity: 60,
     advance_days_required: 2,
     admin_action_days: 3,
 };
 
-const policyItems = [
-    {
-        key: "max_sick",
-        label: "Sick Leave",
-        icon: Clock,
-        color: "bg-rose-50 text-rose-600",
-        iconColor: "text-rose-500",
-        description: "Flexible for genuine illness",
-        unit: "days/year",
-    },
-    {
-        key: "max_casual",
-        label: "Casual Leave",
-        icon: Calendar,
-        color: "bg-amber-50 text-amber-600",
-        iconColor: "text-amber-500",
-        description: "Personal or urgent errands",
-        unit: "days/year",
-    },
-    {
-        key: "max_maternity",
-        label: "Maternity Leave",
-        icon: Baby,
-        color: "bg-pink-50 text-pink-600",
-        iconColor: "text-pink-500",
-        description: "For new mothers (24 weeks)",
-        unit: "days",
-    },
-    {
-        key: "max_paternity",
-        label: "Paternity Leave",
-        icon: Users,
-        color: "bg-blue-50 text-blue-600",
-        iconColor: "text-blue-500",
-        description: "For new fathers (Baby Bonding)",
-        unit: "days",
-    },
-];
-
-const ruleItems = [
-    {
-        label: "Advance Application Required",
-        value: `${FIXED_POLICY.advance_days_required} days`,
-        description: "Apply this many days before the leave start date.",
-    },
-    {
-        label: "Auto-Rejection Time Limit",
-        value: `${FIXED_POLICY.admin_action_days} days`,
-        description: "Pending requests auto-rejected if admin doesn't act within this limit.",
-    },
-];
-
 export default function LeavePolicy() {
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-3xl mx-auto">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Leave Policy</h1>
-                    <p className="text-slate-500 mt-1">Company-defined leave entitlements and rules</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Company Leave Policy</h1>
+                    <p className="text-slate-500 mt-1">Official leave entitlements and application rules</p>
                 </div>
-                <Badge className="bg-indigo-100 text-indigo-700 border-0 text-xs px-3 py-1">
-                    Company Fixed Policy
+                <Badge variant="outline" className="bg-slate-100 text-slate-700 border-0">
+                    Version 2026.1
                 </Badge>
             </div>
 
-            {/* Annual Leave Limits */}
-            <Card className="border-0 shadow-sm">
-                <CardHeader>
+            <Card className="border-0 shadow-sm overflow-hidden">
+                <CardHeader className="bg-slate-900 text-white">
                     <CardTitle className="text-lg flex items-center gap-2">
-                        <Settings className="h-5 w-5 text-indigo-500" />
+                        <Info className="h-5 w-5 text-indigo-400" />
                         Annual Leave Entitlements
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {policyItems.map(({ key, label, icon: Icon, color, iconColor, description, unit }) => (
-                            <div key={key} className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-4">
-                                <div className={`h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
-                                    <Icon className={`h-5 w-5 ${iconColor}`} />
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-slate-800 text-sm">{label}</p>
-                                    <p className="text-xs text-slate-400 mt-0.5">{description}</p>
-                                    <p className="text-2xl font-bold text-slate-900 mt-2">
-                                        {FIXED_POLICY[key]}
-                                        <span className="text-xs font-normal text-slate-400 ml-1">{unit}</span>
-                                    </p>
-                                </div>
+                <CardContent className="p-6">
+                    <ul className="space-y-4">
+                        <li className="flex items-start gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-slate-900">Sick Leave: {FIXED_POLICY.max_sick} Days</p>
+                                <p className="text-sm text-slate-500">Applicable for genuine illness. Supporting medical document is <strong>required for all sick leave applications</strong> regardless of duration.</p>
                             </div>
-                        ))}
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-slate-900">Casual Leave: {FIXED_POLICY.max_casual} Days</p>
+                                <p className="text-sm text-slate-500">Can be used for personal work or urgent errands.</p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-slate-900">Earned Leave (EL): {FIXED_POLICY.max_earned} Days</p>
+                                <p className="text-sm text-slate-500">Accumulated leave for planned vacations and longer breaks.</p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-slate-900">Maternity Leave: {FIXED_POLICY.max_maternity} Days (24 Weeks)</p>
+                                <p className="text-sm text-slate-500">Statutory leave for female employees. Medical documentation required.</p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-slate-900">Paternity Leave: {FIXED_POLICY.max_paternity} Days</p>
+                                <p className="text-sm text-slate-500">For baby bonding, applicable for male employees.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+                <CardHeader>
+                    <CardTitle className="text-lg">Application Rules</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                            <p className="text-sm font-semibold text-indigo-900">Advance Notice Requirement</p>
+                            <p className="text-sm text-indigo-700 mt-1">Employees must apply at least <strong>{FIXED_POLICY.advance_days_required} days in advance</strong> for Casual and Earned leaves. Sick leave does not require advance notice but requires documentation upon return.</p>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <p className="text-sm font-semibold text-slate-900">Approval Deadline</p>
+                            <p className="text-sm text-slate-600 mt-1">Admins must act on leave applications within <strong>{FIXED_POLICY.admin_action_days} days</strong>. If no action is taken, the system will automatically process the request (typically rejection with a default reason).</p>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Time-Bound Rules */}
-            <Card className="border-0 shadow-sm">
-                <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-indigo-500" />
-                        Time-Bound Rules
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    {ruleItems.map((rule) => (
-                        <div key={rule.label} className="flex items-start justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <div>
-                                <p className="font-semibold text-slate-800 text-sm">{rule.label}</p>
-                                <p className="text-xs text-slate-400 mt-0.5">{rule.description}</p>
-                            </div>
-                            <Badge className="bg-indigo-100 text-indigo-700 border-0 text-sm font-bold px-3 ml-4 flex-shrink-0">
-                                {rule.value}
-                            </Badge>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Policy Note */}
-            <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3">
-                <Settings className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                    <p className="text-sm font-semibold text-amber-800">Policy Note</p>
-                    <p className="text-xs text-amber-700 mt-1">
-                        Leave entitlements are set by company policy and apply equally to all employees.
-                        Unpaid leave may be granted at the discretion of HR for cases exceeding the above limits.
-                        Maternity leave of <strong>168 days (24 weeks)</strong> is as per statutory requirements.
-                    </p>
-                </div>
-            </div>
         </div>
     );
 }

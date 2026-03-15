@@ -14,6 +14,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import PayslipDocument from "@/components/PayslipDocument";
 import { toast } from "sonner";
+import { format, startOfMonth, addMonths, isAfter, parseISO } from "date-fns";
 
 const statusColors = {
   draft: "bg-slate-100 text-slate-600",
@@ -41,32 +42,56 @@ export default function PayslipManagement() {
   });
 
   const [form, setForm] = useState({
-    employee_email: "", month: "", bonus: 0, other_deductions: 0, status: "draft",
+    employee_email: "", month: "", bonus: 0, other_deductions: 0, status: "generated",
   });
 
   const createMutation = useMutation({
     mutationFn: (data) => appClient.entities.Payslip.create(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payslips"] }); setFormOpen(false); },
+    onSuccess: (data) => { 
+      qc.invalidateQueries({ queryKey: ["payslips"] }); 
+      setFormOpen(false); 
+      toast.success(`Payslip generated successfully for ${data.month}`);
+    },
+    onError: (err) => toast.error(err.message || "Failed to generate payslip"),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => appClient.entities.Payslip.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payslips"] }); },
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ["payslips"] });
+      toast.success("Status updated");
+    },
+    onError: (err) => toast.error(err.message || "Update failed"),
   });
 
   const handleGenerate = () => {
     const emp = employees.find((e) => e.email === form.employee_email);
-    if (!emp) return;
+    if (!emp || !form.month) {
+      toast.error("Please select an employee and an eligible month");
+      return;
+    }
+    
     const base = emp.base_salary || 0;
     const hra = base * 0.2;
     const transport = 200;
     const medical = 150;
-    const gross = base + hra + transport + medical;
-    const tax = gross * 0.1;
-    const pf = base * 0.12;
-    const otherDed = parseFloat(form.other_deductions) || 0;
-    const totalDed = tax + pf + otherDed;
-    const net = gross - totalDed;
+    const bonus = parseFloat(form.bonus) || 0;
+    const grossMonthly = base + hra + transport + medical + bonus;
+    
+    // Tax Calculation logic (Monthly Slab based)
+    const annualGross = grossMonthly * 12;
+    let annualTax = 0;
+    if (annualGross <= 400000) {
+      annualTax = annualGross * 0.1;
+    } else {
+      annualTax = (400000 * 0.1) + ((annualGross - 400000) * 0.15);
+    }
+    const taxMonthly = annualTax / 12;
+    const pfMonthly = base * 0.125;
+    
+    const otherDed = form.other_deductions || 0;
+    const totalDed = taxMonthly + pfMonthly + otherDed;
+    const net = grossMonthly - totalDed;
 
     createMutation.mutate({
       employee_name: emp.full_name,
@@ -75,10 +100,11 @@ export default function PayslipManagement() {
       month: form.month,
       base_salary: base,
       hra, transport_allowance: transport, medical_allowance: medical,
-      bonus: 0, tax_deduction: Math.round(tax * 100) / 100,
-      provident_fund: Math.round(pf * 100) / 100,
+      bonus, 
+      tax_deduction: Math.round(taxMonthly * 100) / 100,
+      provident_fund: Math.round(pfMonthly * 100) / 100,
       other_deductions: otherDed,
-      gross_salary: Math.round(gross * 100) / 100,
+      gross_salary: Math.round(grossMonthly * 100) / 100,
       total_deductions: Math.round(totalDed * 100) / 100,
       net_salary: Math.round(net * 100) / 100,
       status: form.status,
@@ -164,7 +190,7 @@ export default function PayslipManagement() {
                     <TableCell className="text-rose-600">₹{slip.total_deductions?.toLocaleString()}</TableCell>
                     <TableCell className="font-bold text-slate-900">₹{slip.net_salary?.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge className={`${statusColors[slip.status]} border-0 text-xs`}>{slip.status}</Badge>
+                      <Badge variant="secondary" className={`${statusColors[slip.status]} border-0 text-xs`}>{slip.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right flex justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleDownload(slip)}>
@@ -199,7 +225,29 @@ export default function PayslipManagement() {
           <div className="space-y-4 py-4">
             <div>
               <Label>Employee</Label>
-              <Select value={form.employee_email} onValueChange={(v) => setForm({ ...form, employee_email: v })}>
+              <Select value={form.employee_email} onValueChange={(v) => {
+                const emp = employees.find(e => e.email === v);
+                let defaultMonth = "";
+                if (emp) {
+                  const joiningDateStr = emp.date_of_joining || emp.created_date;
+                  if (joiningDateStr) {
+                    const joiningDate = parseISO(joiningDateStr);
+                    const firstMonth = addMonths(startOfMonth(joiningDate), 1);
+                    const currentMonth = startOfMonth(new Date()); 
+                    
+                    const eligibleMonths = [];
+                    let temp = firstMonth;
+                    while (!isAfter(temp, currentMonth)) {
+                      eligibleMonths.push(format(temp, "MMMM yyyy"));
+                      temp = addMonths(temp, 1);
+                    }
+                    if (eligibleMonths.length > 0) {
+                      defaultMonth = eligibleMonths[eligibleMonths.length - 1]; // Pick most recent
+                    }
+                  }
+                }
+                setForm({ ...form, employee_email: v, month: defaultMonth, bonus: 0, other_deductions: 0 });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                 <SelectContent>
                   {employees.map((e) => <SelectItem key={e.id} value={e.email}>{e.full_name} — {e.department}</SelectItem>)}
@@ -208,7 +256,39 @@ export default function PayslipManagement() {
             </div>
             <div>
               <Label>Month</Label>
-              <Input value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })} placeholder="e.g. March 2026" />
+              {(() => {
+                const emp = employees.find((e) => e.email === form.employee_email);
+                if (!emp) return <Input disabled placeholder="Select employee first" />;
+                
+                const joiningDateStr = emp.date_of_joining || emp.created_date;
+                if (!joiningDateStr) return <p className="text-xs text-rose-500">Error: Joining date missing for employee</p>;
+
+                // Calculate eligible months: Starting from Month AFTER joining, up to current month
+                const joiningDate = parseISO(joiningDateStr);
+                const firstMonth = addMonths(startOfMonth(joiningDate), 1);
+                const currentMonth = startOfMonth(new Date()); 
+                
+                const eligibleMonths = [];
+                let temp = firstMonth;
+                while (!isAfter(temp, currentMonth)) {
+                  eligibleMonths.push(format(temp, "MMMM yyyy"));
+                  temp = addMonths(temp, 1);
+                }
+                eligibleMonths.reverse();
+
+                if (eligibleMonths.length === 0) {
+                  return <p className="text-xs text-amber-600 mt-1">No eligible months yet (payslips start 1 month after joining)</p>;
+                }
+
+                return (
+                  <Select value={form.month} onValueChange={(v) => setForm({ ...form, month: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select month" /></SelectTrigger>
+                    <SelectContent>
+                      {eligibleMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
             </div>
             {(() => {
               const emp = employees.find((e) => e.email === form.employee_email);
@@ -223,20 +303,41 @@ export default function PayslipManagement() {
               return (
                 <div className="bg-slate-50 p-4 rounded-lg space-y-2 text-sm border">
                   <h4 className="font-semibold text-slate-700 mb-2 border-b pb-2">Calculated Breakdown</h4>
-                  <div className="flex justify-between text-slate-600"><span>Base Salary:</span> <span>₹{Math.round(base).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-slate-600"><span>Allowances (HRA, Transport, Medical):</span> <span>₹{Math.round(hra + transport + medical).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-rose-600"><span>Tax (10%):</span> <span>-₹{Math.round(tax).toLocaleString()}</span></div>
-                  <div className="flex justify-between text-rose-600"><span>PF (12%):</span> <span>-₹{Math.round(pf).toLocaleString()}</span></div>
-                  <div className="flex justify-between font-semibold pt-2 border-t text-slate-800">
-                    <span>Net Base Salary (before other deductions):</span> 
-                    <span>₹{Math.round(gross - tax - pf).toLocaleString()}</span>
-                  </div>
+                  <div className="flex justify-between text-slate-600"><span>Monthly Base:</span> <span>₹{Math.round(base).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-600"><span>Allowances:</span> <span>₹{Math.round(hra + transport + medical).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-slate-900 font-medium"><span>Gross Monthly:</span> <span>₹{Math.round(base + hra + transport + medical).toLocaleString()}</span></div>
+                  
+                  {(() => {
+                    const grossM = base + hra + transport + medical;
+                    const annualG = grossM * 12;
+                    let annualT = 0;
+                    if (annualG <= 400000) annualT = annualG * 0.1;
+                    else annualT = (400000 * 0.1) + ((annualG - 400000) * 0.15);
+                    const monthlyT = annualT / 12;
+                    const monthlyPF = base * 0.125;
+                    return (
+                      <>
+                        <div className="flex justify-between text-rose-600 mt-2"><span>Monthly Tax (Slab based):</span> <span>-₹{Math.round(monthlyT).toLocaleString()}</span></div>
+                        <div className="flex justify-between text-rose-600"><span>PF (12.5% of base):</span> <span>-₹{Math.round(monthlyPF).toLocaleString()}</span></div>
+                        <div className="flex justify-between font-bold pt-2 border-t text-indigo-700">
+                          <span>Estimated Net:</span> 
+                          <span>₹{Math.round(grossM - monthlyT - monthlyPF).toLocaleString()}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               );
             })()}
-            <div>
-              <Label>Other Deductions (₹)</Label>
-              <Input type="number" value={form.other_deductions} onChange={(e) => setForm({ ...form, other_deductions: e.target.value })} placeholder="0" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Bonus (₹)</Label>
+                <Input type="number" value={form.bonus} onChange={(e) => setForm({ ...form, bonus: parseFloat(e.target.value) || 0 })} placeholder="0" />
+              </div>
+              <div>
+                <Label>Other Deductions (₹)</Label>
+                <Input type="number" value={form.other_deductions} onChange={(e) => setForm({ ...form, other_deductions: parseFloat(e.target.value) || 0 })} placeholder="0" />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -256,7 +357,7 @@ export default function PayslipManagement() {
                 <div><p className="text-slate-400">Employee</p><p className="font-medium">{selected.employee_name}</p></div>
                 <div><p className="text-slate-400">Department</p><p className="font-medium">{selected.department}</p></div>
                 <div><p className="text-slate-400">Month</p><p className="font-medium">{selected.month}</p></div>
-                <div><p className="text-slate-400">Status</p><Badge className={`${statusColors[selected.status]} border-0`}>{selected.status}</Badge></div>
+                <div><p className="text-slate-400">Status</p><Badge variant="outline" className={`${statusColors[selected.status]} border-0`}>{selected.status}</Badge></div>
               </div>
               <div className="border-t pt-3 space-y-2">
                 <h4 className="font-semibold text-sm text-slate-700">Earnings</h4>

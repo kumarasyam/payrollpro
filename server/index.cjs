@@ -303,7 +303,8 @@ app.post('/api/payslips/generate', async (req, res) => {
 // GET /api/reports/salary — salary report
 app.get('/api/reports/salary', async (req, res) => {
     try {
-        const month = req.query.month || 'February 2026';
+        const currentMonthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        const month = req.query.month || currentMonthName;
         const result = await query(
             `SELECT employee_name, department, base_salary, gross_salary, total_deductions, net_salary, status
        FROM dbo.Payslips WHERE month = @month ORDER BY department, employee_name`,

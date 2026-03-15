@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Building2, Users, Pencil, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function Departments() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -16,7 +17,7 @@ export default function Departments() {
   const [form, setForm] = useState({ name: "", head: "", description: "" });
   const qc = useQueryClient();
 
-  const { data: departments = [] } = useQuery({
+  const { data: departments = [], isLoading: loadingDepts } = useQuery({
     queryKey: ["departments"],
     queryFn: () => appClient.entities.Department.list(),
   });
@@ -28,17 +29,33 @@ export default function Departments() {
 
   const createMutation = useMutation({
     mutationFn: (data) => appClient.entities.Department.create(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["departments"] }); setDialogOpen(false); },
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ["departments"] }); 
+      setDialogOpen(false); 
+      setForm({ name: "", head: "", description: "" });
+      toast.success("Department created successfully");
+    },
+    onError: (err) => toast.error(`Failed to create department: ${err.message}`),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => appClient.entities.Department.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["departments"] }); setDialogOpen(false); setEditing(null); },
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ["departments"] }); 
+      setDialogOpen(false); 
+      setEditing(null); 
+      toast.success("Department updated successfully");
+    },
+    onError: (err) => toast.error(`Failed to update department: ${err.message}`),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => appClient.entities.Department.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["departments"] });
+      toast.success("Department deleted successfully");
+    },
+    onError: (err) => toast.error(`Failed to delete department: ${err.message}`),
   });
 
   const handleOpen = (dept = null) => {
@@ -48,8 +65,11 @@ export default function Departments() {
   };
 
   const handleSave = () => {
-    const empCount = employees.filter((e) => e.department === form.name).length;
-    const data = { ...form, employee_count: empCount };
+    if (!form.name.trim()) {
+      toast.error("Department name is required");
+      return;
+    }
+    const data = { ...form };
     if (editing) {
       updateMutation.mutate({ id: editing.id, data });
     } else {

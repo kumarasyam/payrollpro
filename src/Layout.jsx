@@ -40,6 +40,7 @@ const employeeNavItems = [
   { name: "Apply Leave", page: "ApplyLeave", icon: CalendarDays },
   { name: "My Payslips", page: "MyPayslips", icon: FileText },
   { name: "Salary Request", page: "SalaryRequest", icon: IndianRupee },
+  { name: "Leave Policy", page: "LeavePolicy", icon: CalendarDays },
 ];
 
 export default function Layout({ children, currentPageName }) {

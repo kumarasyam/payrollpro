@@ -451,7 +451,8 @@ SELECT
         - ROUND((e.base_salary + ROUND(e.base_salary * 0.10, 2) + 200 + 150) * 0.10, 2)
         - ROUND(e.base_salary * 0.12, 2),                                                     -- Net salary
     'paid'
-FROM dbo.Employees e;
+FROM dbo.Employees e
+WHERE e.date_of_joining < '2026-02-01'; -- Only generate for those who completed at least 1 full month by February
 GO
 
 PRINT '69 payslips generated for February 2026';
@@ -613,10 +614,19 @@ BEGIN
 
     IF @Base IS NULL BEGIN RAISERROR('Employee not found', 16, 1); RETURN; END
 
-    SET @HRA   = ROUND(@Base * 0.10, 2);
+    SET @HRA   = ROUND(@Base * 0.20, 2);
     SET @Gross = @Base + @HRA + 200 + 150 + @Bonus;
-    SET @Tax   = ROUND(@Gross * 0.10, 2);
-    SET @PF    = ROUND(@Base * 0.12, 2);
+    
+    -- Slab-based tax calculation (Annual)
+    DECLARE @AnnualGross DECIMAL(18,2) = @Gross * 12;
+    DECLARE @AnnualTax DECIMAL(18,2);
+    IF @AnnualGross <= 400000 
+        SET @AnnualTax = @AnnualGross * 0.10;
+    ELSE 
+        SET @AnnualTax = (400000 * 0.10) + ((@AnnualGross - 400000) * 0.15);
+    
+    SET @Tax = ROUND(@AnnualTax / 12, 2);
+    SET @PF  = ROUND(@Base * 0.125, 2);
 
     INSERT INTO dbo.Payslips (employee_name, employee_email, department, month,
         base_salary, hra, transport_allowance, medical_allowance, bonus, gross_salary,

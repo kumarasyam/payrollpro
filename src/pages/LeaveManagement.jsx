@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 // Fixed company policy (mirrors LeavePolicy.jsx constants)
 const FIXED_POLICY = {
-  max_sick: 10, max_casual: 10,
+  max_sick: 4, max_casual: 6, max_earned: 14,
   max_maternity: 168, max_paternity: 60,
   advance_days_required: 2, admin_action_days: 3,
 };
@@ -140,10 +140,22 @@ export default function LeaveManagement() {
                           </div>
                         </TableCell>
                         <TableCell className="text-slate-600">{emp.designation}</TableCell>
-                        <TableCell>
-                          <Badge className={`${emp.leave_balance <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} border-0 font-bold text-sm px-3 py-1`}>
-                            {emp.leave_balance ?? 20} Days
-                          </Badge>
+                        <TableCell className="text-slate-600 font-medium">
+                          <div className="space-y-1">
+                            {(() => {
+                              const empLeaves = leaves.filter(l => l.employee_email === emp.email && l.status === 'approved');
+                              const usedSick = empLeaves.filter(l => l.leave_type === 'sick').reduce((s, c) => s + (c.days || 0), 0);
+                              const usedCasual = empLeaves.filter(l => l.leave_type === 'casual').reduce((s, c) => s + (c.days || 0), 0);
+                              const usedEarned = empLeaves.filter(l => l.leave_type === 'earned').reduce((s, c) => s + (c.days || 0), 0);
+                              return (
+                                <>
+                                  <div className="flex justify-between w-48 text-xs"><span>Sick:</span> <span className="font-bold underline text-rose-600">{usedSick} / {FIXED_POLICY.max_sick}</span></div>
+                                  <div className="flex justify-between w-48 text-xs"><span>Casual:</span> <span className="font-bold underline text-amber-600">{usedCasual} / {FIXED_POLICY.max_casual}</span></div>
+                                  <div className="flex justify-between w-48 text-xs"><span>Earned:</span> <span className="font-bold underline text-indigo-600">{usedEarned} / {FIXED_POLICY.max_earned}</span></div>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

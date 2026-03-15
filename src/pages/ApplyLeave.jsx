@@ -15,8 +15,9 @@ import { useAuth } from "@/lib/AuthContext";
 
 // Fixed company leave policy limits
 const FIXED_POLICY = {
-  max_sick: 10,
-  max_casual: 10,
+  max_sick: 4,
+  max_casual: 6,
+  max_earned: 14,
   max_maternity: 168,
   max_paternity: 60,
   advance_days_required: 2,
@@ -126,11 +127,11 @@ export default function ApplyLeave() {
       ? Math.max(differenceInDays(new Date(form.end_date), new Date(form.start_date)) + 1, 0)
       : 0;
 
-    const isLongSick = form.leave_type === 'sick' && days >= 3;
+    const isSick = form.leave_type === 'sick' && days >= 1;
     const isMaternity = form.leave_type === 'maternity';
 
-    if ((isLongSick || isMaternity) && !uploadedFile) {
-      toast.error(`Supporting document is required for ${isMaternity ? "Maternity" : "Sick (3+ days)"} leave.`);
+    if ((isSick || isMaternity) && !uploadedFile) {
+      toast.error(`Supporting document is required for ${isMaternity ? "Maternity" : "Sick"} leave.`);
       return;
     }
 
@@ -162,10 +163,10 @@ export default function ApplyLeave() {
     const daysCount = differenceInDays(endDate, startDate) + 1;
 
     // Advance days check
-    if (FIXED_POLICY.advance_days_required > 0) {
+    if (FIXED_POLICY.advance_days_required > 0 && !["sick", "unpaid"].includes(form.leave_type)) {
       const advanceDays = differenceInDays(startDate, today);
       if (advanceDays < FIXED_POLICY.advance_days_required) {
-        toast.error(`Policy requires applying at least ${FIXED_POLICY.advance_days_required} days in advance.`);
+        toast.error(`Policy requires applying at least ${FIXED_POLICY.advance_days_required} days in advance for ${form.leave_type} leave.`);
         return;
       }
     }
@@ -214,9 +215,10 @@ export default function ApplyLeave() {
   const usedLeaves = {
     sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
     casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
 
-  const needsDocument = form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 3);
+  const needsDocument = form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 1);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -227,16 +229,22 @@ export default function ApplyLeave() {
         </div>
         <div className="flex gap-4 text-sm">
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Sick</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Sick Used</p>
             <p className="font-bold text-slate-700">{usedLeaves.sick} / {FIXED_POLICY.max_sick}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Casual</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Casual Used</p>
             <p className="font-bold text-slate-700">{usedLeaves.casual} / {FIXED_POLICY.max_casual}</p>
           </div>
+          <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Earned Used</p>
+            <p className="font-bold text-slate-700">{usedLeaves.earned} / {FIXED_POLICY.max_earned}</p>
+          </div>
           <div className="text-center bg-indigo-50 p-2 px-4 rounded-lg border border-indigo-100">
-            <p className="text-[10px] text-indigo-500 font-bold uppercase">Leave Balance</p>
-            <p className="font-bold text-indigo-700">{employee?.leave_balance ?? 20} days left</p>
+            <p className="text-[10px] text-indigo-500 font-bold uppercase">Total Usage</p>
+            <p className="font-bold text-indigo-700">
+              {usedLeaves.sick + usedLeaves.casual + usedLeaves.earned} / {FIXED_POLICY.max_sick + FIXED_POLICY.max_casual + FIXED_POLICY.max_earned}
+            </p>
           </div>
         </div>
       </div>
@@ -258,6 +266,7 @@ export default function ApplyLeave() {
                   <SelectContent>
                     <SelectItem value="sick">Sick Leave</SelectItem>
                     <SelectItem value="casual">Casual Leave</SelectItem>
+                    <SelectItem value="earned">Earned Leave (EL)</SelectItem>
                     <SelectItem value="maternity">Maternity Leave</SelectItem>
                     <SelectItem value="paternity">Paternity Leave</SelectItem>
                     <SelectItem value="unpaid">Unpaid Leave</SelectItem>
@@ -288,7 +297,7 @@ export default function ApplyLeave() {
                 <p className="text-xs text-amber-600">
                   {form.leave_type === 'maternity'
                     ? "Maternity leave requires a medical certificate or relevant document."
-                    : "Sick leave of 3+ days requires a medical certificate."}
+                    : "Sick leave requires a medical certificate."}
                   &nbsp;Upload JPG, PNG, GIF or PDF (max 5MB).
                 </p>
 

@@ -22,7 +22,7 @@ export default function EmployeeDashboard() {
     queryKey: ["leave-policy"],
     queryFn: async () => {
         const list = await appClient.entities.LeavePolicy.list();
-        return list?.[0] || { max_sick: 10, max_casual: 10, max_maternity: 168, max_paternity: 60 };
+        return list?.[0] || { max_sick: 4, max_casual: 6, max_earned: 14, max_maternity: 168, max_paternity: 60 };
     }
   });
 
@@ -45,15 +45,17 @@ export default function EmployeeDashboard() {
   const usedLeaves = {
     sick: approvedLeaves.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + curr.days, 0),
     casual: approvedLeaves.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + curr.days, 0),
+    earned: approvedLeaves.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + curr.days, 0),
     maternity: approvedLeaves.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + curr.days, 0),
     paternity: approvedLeaves.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + curr.days, 0),
   };
 
   const availableLeaves = {
-    sick: (policy?.max_sick || 10) - usedLeaves.sick,
-    casual: (policy?.max_casual || 10) - usedLeaves.casual,
-    maternity: (policy?.max_maternity || 168) - usedLeaves.maternity,
-    paternity: (policy?.max_paternity || 60) - usedLeaves.paternity,
+    sick: usedLeaves.sick,
+    casual: usedLeaves.casual,
+    earned: usedLeaves.earned,
+    maternity: usedLeaves.maternity,
+    paternity: usedLeaves.paternity,
   };
 
   const totalAvailable = employee?.leave_balance ?? 20;
@@ -73,27 +75,31 @@ export default function EmployeeDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Available" value={`${totalAvailable} days`} icon={CalendarDays} color="indigo" subtitle="Remaining Leave Balance" />
-        <StatCard title="Pending Leaves" value={pendingLeaves} icon={Clock} color="amber" />
-        <StatCard title="Total Payslips" value={payslips.length} icon={FileText} color="blue" />
-        <StatCard title="Last Net Pay" value={latestPayslip ? `₹${latestPayslip.net_salary?.toLocaleString()}` : "—"} icon={IndianRupee} color="emerald" />
+        <StatCard title="Pending Leaves" value={pendingLeaves} icon={Clock} color="amber" subtitle="Awaiting administrative action" />
+        <StatCard title="Total Payslips" value={payslips.length} icon={FileText} color="blue" subtitle="Historical records" />
+        <StatCard title="Last Net Pay" value={latestPayslip ? `₹${latestPayslip.net_salary?.toLocaleString()}` : "—"} icon={IndianRupee} color="emerald" subtitle={latestPayslip ? `Paid for ${latestPayslip.month}` : "No payslips generated"} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Sick</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.sick} / {policy?.max_sick || 10}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Sick Used</p>
+              <p className="text-lg font-bold text-slate-800">{usedLeaves.sick} / {policy?.max_sick || 4}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Casual</p>
-              <p className="text-lg font-bold text-slate-800">{availableLeaves.casual} / {policy?.max_casual || 10}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Casual Used</p>
+              <p className="text-lg font-bold text-slate-800">{usedLeaves.casual} / {policy?.max_casual || 6}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Maternity</p>
-              <p className="text-lg font-bold text-slate-800">{employee?.gender === "Male" ? "0 / 0" : `${availableLeaves.maternity} / ${policy?.max_maternity || 168}`}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Earned Used</p>
+              <p className="text-lg font-bold text-slate-800">{usedLeaves.earned} / {policy?.max_earned || 14}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Paternity</p>
-              <p className="text-lg font-bold text-slate-800">{employee?.gender === "Female" ? "0 / 0" : `${availableLeaves.paternity} / ${policy?.max_paternity || 60}`}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Maternity Used</p>
+              <p className="text-lg font-bold text-slate-800">{employee?.gender === "Male" ? "0 / 0" : `${usedLeaves.maternity} / ${policy?.max_maternity || 168}`}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Paternity Used</p>
+              <p className="text-lg font-bold text-slate-800">{employee?.gender === "Female" ? "0 / 0" : `${usedLeaves.paternity} / ${policy?.max_paternity || 60}`}</p>
           </div>
       </div>
 
@@ -115,7 +121,7 @@ export default function EmployeeDashboard() {
                         {leave.start_date && format(new Date(leave.start_date), "MMM d")} - {leave.end_date && format(new Date(leave.end_date), "MMM d")} · {leave.days} days
                       </p>
                     </div>
-                    <Badge className={`${statusColors[leave.status]} border-0 text-xs`}>{leave.status}</Badge>
+                    <Badge variant="secondary" className={`${statusColors[leave.status]} border-0 text-xs`}>{leave.status}</Badge>
                   </div>
                 ))}
               </div>
@@ -138,7 +144,7 @@ export default function EmployeeDashboard() {
                       <p className="text-sm font-medium text-slate-800">{slip.month}</p>
                       <p className="text-xs text-slate-400">Net: ${slip.net_salary?.toLocaleString()}</p>
                     </div>
-                    <Badge className={`${statusColors[slip.status] || "bg-slate-100 text-slate-600"} border-0 text-xs`}>{slip.status}</Badge>
+                    <Badge variant="secondary" className={`${statusColors[slip.status] || "bg-slate-100 text-slate-600"} border-0 text-xs`}>{slip.status}</Badge>
                   </div>
                 ))}
               </div>
