@@ -23,10 +23,20 @@ export default function MyProfile() {
 
     const { data: employee } = useQuery({
         queryKey: ["my-employee", user?.email],
-        queryFn: () => appClient.entities.Employee.filter({ email: user.email }),
+        queryFn: () => appClient.entities.Employee.filter({ email: user?.email }),
         enabled: !!user?.email,
         select: (data) => data?.[0],
     });
+
+    const { data: leaves = [] } = useQuery({
+        queryKey: ["my-leaves", user?.email],
+        queryFn: () => appClient.entities.LeaveApplication.filter({ employee_email: user?.email }),
+        enabled: !!user?.email,
+    });
+
+    const usedAnnual = leaves
+        .filter(l => ['sick', 'casual', 'earned'].includes(l.leave_type) && l.status !== 'rejected')
+        .reduce((sum, l) => sum + (l.days || 0), 0);
 
     const [contactForm, setContactForm] = useState({
         phone: "", email: "",
@@ -192,12 +202,12 @@ export default function MyProfile() {
                 <CardContent>
                     <div className="flex items-center gap-4">
                         <div className="flex-1 text-center p-4 bg-indigo-50 rounded-xl">
-                            <p className="text-3xl font-bold text-indigo-600">{employee?.leave_balance ?? 24}</p>
-                            <p className="text-xs text-slate-500 mt-1">Days Available</p>
+                            <p className="text-3xl font-bold text-indigo-600">{Math.max(0, 24 - usedAnnual)}</p>
+                            <p className="text-xs text-slate-500 mt-1">Days Remaining</p>
                         </div>
                         <div className="flex-1 text-center p-4 bg-amber-50 rounded-xl">
-                            <p className="text-3xl font-bold text-amber-600">{24 - (employee?.leave_balance ?? 24)}</p>
-                            <p className="text-xs text-slate-500 mt-1">Days Used</p>
+                            <p className="text-3xl font-bold text-amber-600">{usedAnnual}</p>
+                            <p className="text-xs text-slate-500 mt-1">Days Used/Applied</p>
                         </div>
                     </div>
                 </CardContent>

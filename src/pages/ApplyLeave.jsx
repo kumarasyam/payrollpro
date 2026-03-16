@@ -218,9 +218,9 @@ export default function ApplyLeave() {
     : 0;
 
   const usedLeaves = {
-    sick: leaves.filter(l => l.leave_type === 'sick' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    casual: leaves.filter(l => l.leave_type === 'casual' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    earned: leaves.filter(l => l.leave_type === 'earned' && l.status === 'approved').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    sick: leaves.filter(l => l.leave_type === 'sick' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    casual: leaves.filter(l => l.leave_type === 'casual' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: leaves.filter(l => l.leave_type === 'earned' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
 
   const needsDocument = form.leave_type === 'maternity' || (form.leave_type === 'sick' && days >= 1);
@@ -234,19 +234,19 @@ export default function ApplyLeave() {
         </div>
         <div className="flex gap-4 text-sm">
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Sick Used</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Sick Used/Applied</p>
             <p className="font-bold text-slate-700">{usedLeaves.sick} / {activePolicy.max_sick}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Casual Used</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Casual Used/Applied</p>
             <p className="font-bold text-slate-700">{usedLeaves.casual} / {activePolicy.max_casual}</p>
           </div>
           <div className="text-center bg-white p-2 px-4 rounded-lg border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Earned Used</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase">Earned Used/Applied</p>
             <p className="font-bold text-slate-700">{usedLeaves.earned} / {activePolicy.max_earned}</p>
           </div>
           <div className="text-center bg-indigo-50 p-2 px-4 rounded-lg border border-indigo-100">
-            <p className="text-[10px] text-indigo-500 font-bold uppercase">Total Usage</p>
+            <p className="text-[10px] text-indigo-500 font-bold uppercase">Total Balance</p>
             <p className="font-bold text-indigo-700">
               {usedLeaves.sick + usedLeaves.casual + usedLeaves.earned} / {activePolicy.max_sick + activePolicy.max_casual + activePolicy.max_earned}
             </p>

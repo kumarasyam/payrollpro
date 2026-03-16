@@ -434,17 +434,37 @@ function seedLocalFallbackData() {
   // Payslips
   const pk = 'payrollpro_Payslip';
   if (!localStorage.getItem(pk) || JSON.parse(localStorage.getItem(pk)).length === 0) {
-    localStorage.setItem(pk, JSON.stringify(allEmployees.map(([name, dept, , salary], i) => {
-      const hra = Math.round(salary * 0.10), gross = salary + hra + 350;
-      const tax = Math.round(gross * 0.10), pf = Math.round(salary * 0.12);
-      return {
-        id: `ps-${String(i + 1).padStart(3, '0')}`, employee_name: name, employee_email: toEmail(name),
-        department: dept, month: 'February 2026', base_salary: salary, hra, transport_allowance: 200,
-        medical_allowance: 150, bonus: 0, gross_salary: gross, tax_deduction: tax, provident_fund: pf,
-        other_deductions: 0, total_deductions: tax + pf, net_salary: gross - tax - pf, status: 'paid',
-        created_date: now, updated_date: now
-      };
-    })));
+    const historicalPayslips = [];
+    ['December 2025', 'January 2026', 'February 2026'].forEach((month) => {
+      allEmployees.slice(0, 10).forEach(([name, dept, , salary], i) => {
+        const hra = Math.round(salary * 0.10);
+        const gross = salary + hra + 350;
+        const tax = Math.round(gross * 0.10);
+        const pf = Math.round(salary * 0.12);
+        historicalPayslips.push({
+          id: `ps-${month.replace(' ', '-')}-${i}`,
+          employee_name: name,
+          employee_email: toEmail(name),
+          department: dept,
+          month: month,
+          base_salary: salary,
+          hra,
+          transport_allowance: 200,
+          medical_allowance: 150,
+          bonus: 0,
+          gross_salary: gross,
+          tax_deduction: tax,
+          provident_fund: pf,
+          other_deductions: 0,
+          total_deductions: tax + pf,
+          net_salary: gross - tax - pf,
+          status: 'paid',
+          created_date: now,
+          updated_date: now
+        });
+      });
+    });
+    localStorage.setItem(pk, JSON.stringify(historicalPayslips));
   }
 
   // Attendance

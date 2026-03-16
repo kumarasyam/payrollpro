@@ -7,9 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, FileText, IndianRupee, Clock, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import StatCard from "@/components/dashboard/StatCard";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import PayslipDocument from "@/components/PayslipDocument";
+import { toast } from "sonner";
+import { Download } from "lucide-react";
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
+  const [downloadingSlip, setDownloadingSlip] = React.useState(null);
+  const hiddenRef = React.useRef(null);
 
   const { data: employee } = useQuery({
     queryKey: ["my-employee", user?.email],
@@ -44,11 +51,11 @@ export default function EmployeeDashboard() {
   const latestPayslip = payslips[0];
 
   const usedLeaves = {
-    sick: approvedLeavesList.filter(l => l.leave_type === 'sick').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    casual: approvedLeavesList.filter(l => l.leave_type === 'casual').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    earned: approvedLeavesList.filter(l => l.leave_type === 'earned').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    maternity: approvedLeavesList.filter(l => l.leave_type === 'maternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
-    paternity: approvedLeavesList.filter(l => l.leave_type === 'paternity').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    sick: approvedLeavesList.filter(l => l.leave_type === 'sick' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    casual: approvedLeavesList.filter(l => l.leave_type === 'casual' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    earned: approvedLeavesList.filter(l => l.leave_type === 'earned' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    maternity: approvedLeavesList.filter(l => l.leave_type === 'maternity' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
+    paternity: approvedLeavesList.filter(l => l.leave_type === 'paternity' && l.status !== 'rejected').reduce((acc, curr) => acc + (curr.days || 0), 0),
   };
 
   const availableLeaves = {
@@ -84,15 +91,15 @@ export default function EmployeeDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Sick Used</p>
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Sick Used/Applied</p>
               <p className="text-lg font-bold text-slate-800">{usedLeaves.sick} / {policy?.max_sick || 4}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Casual Used</p>
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Casual Used/Applied</p>
               <p className="text-lg font-bold text-slate-800">{usedLeaves.casual} / {policy?.max_casual || 6}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Earned Used</p>
+              <p className="text-xs text-slate-400 font-bold uppercase mb-1">Earned Used/Applied</p>
               <p className="text-lg font-bold text-slate-800">{usedLeaves.earned} / {policy?.max_earned || 14}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center">
@@ -142,17 +149,51 @@ export default function EmployeeDashboard() {
               <div className="space-y-3">
                 {payslips.slice(0, 5).map((slip) => (
                   <div key={slip.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl">
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-slate-800">{slip.month}</p>
-                      <p className="text-xs text-slate-400">Net: ${slip.net_salary?.toLocaleString()}</p>
+                      <p className="text-xs text-slate-400">Net: ₹{slip.net_salary?.toLocaleString()}</p>
                     </div>
-                    <Badge variant="secondary" className={`${statusColors[slip.status] || "bg-slate-100 text-slate-600"} border-0 text-xs`}>{slip.status}</Badge>
+                    <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className={`${statusColors[slip.status] || "bg-slate-100 text-slate-600"} border-0 text-xs`}>{slip.status}</Badge>
+                        <button 
+                            onClick={() => {
+                                setDownloadingSlip(slip);
+                                const tid = toast.loading("Generating PDF...");
+                                setTimeout(async () => {
+                                    if (hiddenRef.current) {
+                                        try {
+                                            const canvas = await html2canvas(hiddenRef.current, { scale: 2 });
+                                            const pdf = new jsPDF("p", "mm", "a4");
+                                            const width = pdf.internal.pageSize.getWidth();
+                                            const height = (canvas.height * width) / canvas.width;
+                                            pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, width, height);
+                                            pdf.save(`Payslip_${slip.month}.pdf`);
+                                            toast.success("Downloaded", { id: tid });
+                                        } catch (e) {
+                                            toast.error("Failed", { id: tid });
+                                        } finally {
+                                            setDownloadingSlip(null);
+                                        }
+                                    }
+                                }, 500);
+                            }}
+                            className="p-1.5 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition-colors"
+                        >
+                            <Download className="h-4 w-4" />
+                        </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="hidden">
+        <div ref={hiddenRef}>
+          {downloadingSlip && <PayslipDocument slip={downloadingSlip} />}
+        </div>
       </div>
     </div>
   );

@@ -80,64 +80,67 @@ export default function LeaveManagement() {
       return;
     }
     
-    // Sync Attendance
-    try {
-      const days = eachDayOfInterval({
-        start: new Date(selected.start_date),
-        end: new Date(selected.end_date)
-      });
-      
-      if (status !== "approved") return;
-      const attendanceStatus = "on_leave";
-      
-      // Fetch existing attendance to avoid duplicates
-      const existingAtt = await appClient.entities.Attendance.filter({ 
-        employee_email: selected.employee_email 
-      });
-
-      for (const day of days) {
-        const dateStr = format(day, "yyyy-MM-dd");
-        const existing = existingAtt.find(a => a.date === dateStr);
-        
-        if (existing) {
-          await appClient.entities.Attendance.update(existing.id, { 
-            status: attendanceStatus,
-            notes: `Leave ${status}: ${remarks || selected.reason}`
-          });
-        } else {
-          await appClient.entities.Attendance.create({
-            employee_name: selected.employee_name,
-            employee_email: selected.employee_email,
-            department: selected.department,
-            date: dateStr,
-            status: attendanceStatus,
-            notes: `Leave ${status}: ${remarks || selected.reason}`,
-            worked_hours: 0,
-            overtime_hours: 0
-          });
-        }
-      }
-      qc.invalidateQueries({ queryKey: ["attendance"] });
-    } catch (err) {
-      console.error("Attendance sync failed:", err);
-    }
-
+    // Sync Attendance & Balance - ONLY for approved leaves
     if (status === "approved") {
-      const targetEmp = employees.find(e => e.email === selected.employee_email);
-      if (targetEmp) {
-        try {
+      try {
+        const days = eachDayOfInterval({
+          start: new Date(selected.start_date),
+          end: new Date(selected.end_date)
+        });
+        
+        const attendanceStatus = "on_leave";
+        
+        // Fetch existing attendance to avoid duplicates
+        const existingAtt = await appClient.entities.Attendance.filter({ 
+          employee_email: selected.employee_email 
+        });
+
+        for (const day of days) {
+          const dateStr = format(day, "yyyy-MM-dd");
+          const existing = existingAtt.find(a => a.date === dateStr);
+          
+          if (existing) {
+            await appClient.entities.Attendance.update(existing.id, { 
+              status: attendanceStatus,
+              notes: `Leave approved: ${remarks || selected.reason}`
+            });
+          } else {
+            await appClient.entities.Attendance.create({
+              employee_name: selected.employee_name,
+              employee_email: selected.employee_email,
+              department: selected.department,
+              date: dateStr,
+              status: attendanceStatus,
+              notes: `Leave approved: ${remarks || selected.reason}`,
+              worked_hours: 0,
+              overtime_hours: 0
+            });
+          }
+        }
+        qc.invalidateQueries({ queryKey: ["attendance"] });
+
+        // Update Balance
+        const targetEmp = employees.find(e => e.email === selected.employee_email);
+        if (targetEmp) {
           await appClient.entities.Employee.update(targetEmp.id, {
             leave_balance: Math.max(0, (targetEmp.leave_balance || 0) - (selected.days || 0))
           });
           qc.invalidateQueries({ queryKey: ["employees"] });
-        } catch (err) {
-          console.error("Failed to update employee balance:", err);
-          toast.error("Leave approved, but failed to update balance record.");
         }
+      } catch (err) {
+        console.error("Leave approval sync failed:", err);
+        toast.error("Failed to sync attendance/balance records.");
       }
     }
 
-    updateMutation.mutate({ id: selected.id, data: { status, remarks: remarks } });
+    // Always update the leave application status
+    updateMutation.mutate({ 
+      id: selected.id, 
+      data: { 
+        status, 
+        remarks: remarks || (status === 'rejected' ? 'Rejected by admin' : '') 
+      } 
+    });
   };
 
   const filtered = leaves.filter((l) => {
@@ -201,15 +204,15 @@ export default function LeaveManagement() {
                         <TableCell className="text-slate-600 font-medium">
                           <div className="space-y-1">
                             {(() => {
-                              const empLeaves = leaves.filter(l => l.employee_email === emp.email && l.status === 'approved');
+                              const empLeaves = leaves.filter(l => l.employee_email === emp.email && l.status !== 'rejected');
                               const usedSick = empLeaves.filter(l => l.leave_type === 'sick').reduce((s, c) => s + (c.days || 0), 0);
                               const usedCasual = empLeaves.filter(l => l.leave_type === 'casual').reduce((s, c) => s + (c.days || 0), 0);
                               const usedEarned = empLeaves.filter(l => l.leave_type === 'earned').reduce((s, c) => s + (c.days || 0), 0);
                               return (
                                 <>
-                                  <div className="flex justify-between w-48 text-xs"><span>Sick:</span> <span className="font-bold underline text-rose-600">{usedSick} / {FIXED_POLICY.max_sick}</span></div>
-                                  <div className="flex justify-between w-48 text-xs"><span>Casual:</span> <span className="font-bold underline text-amber-600">{usedCasual} / {FIXED_POLICY.max_casual}</span></div>
-                                  <div className="flex justify-between w-48 text-xs"><span>Earned:</span> <span className="font-bold underline text-indigo-600">{usedEarned} / {FIXED_POLICY.max_earned}</span></div>
+                                  <div className="flex justify-between w-48 text-xs"><span>Sick Used/Applied:</span> <span className="font-bold underline text-rose-600">{usedSick} / {FIXED_POLICY.max_sick}</span></div>
+                                  <div className="flex justify-between w-48 text-xs"><span>Casual Used/Applied:</span> <span className="font-bold underline text-amber-600">{usedCasual} / {FIXED_POLICY.max_casual}</span></div>
+                                  <div className="flex justify-between w-48 text-xs"><span>Earned Used/Applied:</span> <span className="font-bold underline text-indigo-600">{usedEarned} / {FIXED_POLICY.max_earned}</span></div>
                                 </>
                               );
                             })()}

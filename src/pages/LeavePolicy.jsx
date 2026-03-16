@@ -68,7 +68,13 @@ export default function LeavePolicy() {
                             <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                             <div>
                                 <p className="font-semibold text-slate-900">Paternity Leave: {FIXED_POLICY.max_paternity} Days</p>
-                                <p className="text-sm text-slate-500">For baby bonding, applicable for male employees.</p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3 border-t pt-4">
+                            <CheckCircle2 className="h-5 w-5 text-indigo-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="font-bold text-indigo-900 text-lg">Total Annual Leave: 24 Days</p>
+                                <p className="text-sm text-indigo-700">The sum of Sick, Casual, and Earned leaves capped at 24 days per year.</p>
                             </div>
                         </li>
                     </ul>

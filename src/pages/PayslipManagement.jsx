@@ -28,32 +28,35 @@ const calculateSalary = (annualSalary) => {
     const basic = monthlySalary * 0.40;
     const hra = basic * 0.50;
     const conveyance = 2000;
-    const specialAllowance = monthlySalary - (basic + hra + conveyance);
+    const specialAllowance = Math.max(0, monthlySalary - (basic + hra + conveyance));
     const grossSalary = basic + hra + conveyance + specialAllowance;
     const pf = basic * 0.12;
     const professionalTax = 200;
 
+    // Taxable income = Annual Salary - Standard Deduction (75,000 for New Regime)
+    const taxableAnnual = Math.max(0, annualSalary - 75000);
     let annualTax = 0;
-    if (annualSalary > 1500000) {
-        annualTax += (annualSalary - 1500000) * 0.30;
+
+    if (taxableAnnual > 1500000) {
+        annualTax += (taxableAnnual - 1500000) * 0.30;
         annualTax += (1500000 - 1200000) * 0.20;
         annualTax += (1200000 - 900000) * 0.15;
         annualTax += (900000 - 600000) * 0.10;
         annualTax += (600000 - 300000) * 0.05;
-    } else if (annualSalary > 1200000) {
-        annualTax += (annualSalary - 1200000) * 0.20;
+    } else if (taxableAnnual > 1200000) {
+        annualTax += (taxableAnnual - 1200000) * 0.20;
         annualTax += (1200000 - 900000) * 0.15;
         annualTax += (900000 - 600000) * 0.10;
         annualTax += (600000 - 300000) * 0.05;
-    } else if (annualSalary > 900000) {
-        annualTax += (annualSalary - 900000) * 0.15;
+    } else if (taxableAnnual > 900000) {
+        annualTax += (taxableAnnual - 900000) * 0.15;
         annualTax += (900000 - 600000) * 0.10;
         annualTax += (600000 - 300000) * 0.05;
-    } else if (annualSalary > 600000) {
-        annualTax += (annualSalary - 600000) * 0.10;
+    } else if (taxableAnnual > 600000) {
+        annualTax += (taxableAnnual - 600000) * 0.10;
         annualTax += (600000 - 300000) * 0.05;
-    } else if (annualSalary > 300000) {
-        annualTax += (annualSalary - 300000) * 0.05;
+    } else if (taxableAnnual > 300000) {
+        annualTax += (taxableAnnual - 300000) * 0.05;
     }
 
     const monthlyTax = annualTax / 12;

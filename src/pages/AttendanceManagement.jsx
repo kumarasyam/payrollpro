@@ -15,7 +15,6 @@ import { format } from "date-fns";
 
 const statusColors = {
     present: "bg-emerald-100 text-emerald-700",
-
     half_day: "bg-amber-100 text-amber-700",
     on_leave: "bg-blue-100 text-blue-700",
     holiday: "bg-purple-100 text-purple-700",
@@ -79,27 +78,10 @@ export default function AttendanceManagement() {
     });
 
     const [selectedRec, setSelectedRec] = useState(null);
-    const [remarks, setRemarks] = useState("");
-    const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
 
     const handleAction = (rec, newStatus) => {
-        if (newStatus === 'absent') {
-            setSelectedRec(rec);
-            setRejectionDialogOpen(true);
-            return;
-        }
         updateMutation.mutate({ id: rec.id, data: { status: newStatus, notes: rec.notes } });
-        setRemarks("");
         setSelectedRec(null);
-    };
-
-    const handleReject = () => {
-        if (selectedRec && remarks.trim()) {
-            updateMutation.mutate({ id: selectedRec.id, data: { status: 'absent', notes: remarks } });
-            setRemarks("");
-            setSelectedRec(null);
-            setRejectionDialogOpen(false);
-        }
     };
 
     const filtered = attendance.filter(a => {
@@ -287,26 +269,6 @@ export default function AttendanceManagement() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
                         <Button onClick={handleSubmit} className="bg-indigo-600 hover:bg-indigo-700">Save</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-            <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>Reject Attendance</DialogTitle></DialogHeader>
-                    <div className="py-4">
-                        <Label>Reason for Rejection</Label>
-                        <Textarea 
-                            value={remarks} 
-                            onChange={e => setRemarks(e.target.value)} 
-                            placeholder="Please provide a reason..." 
-                            className="mt-2"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setRejectionDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleReject} className="bg-rose-600 hover:bg-rose-700" disabled={!remarks.trim()}>
-                            Confirm Rejection
-                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
