@@ -40,11 +40,11 @@ GO
 
 -- ── Update LeavePolicy with official values ───────────────────────────────────
 UPDATE dbo.LeavePolicy SET 
-    max_sick = 15, 
-    max_casual = 12, 
-    max_earned = 20, 
-    max_maternity = 150,    -- 5 months
-    max_paternity = 15, 
+    max_sick = 4, 
+    max_casual = 6, 
+    max_earned = 14, 
+    max_maternity = 168,    -- 5 months
+    max_paternity = 60, 
     advance_days_required = 2, 
     admin_action_days = 5;
 GO

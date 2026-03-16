@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 // Fixed company policy (mirrors LeavePolicy.jsx constants)
 const FIXED_POLICY = {
-  max_sick: 4, max_casual: 10, max_earned: 10,
+  max_sick: 4, max_casual: 6, max_earned: 14,
   max_maternity: 168, max_paternity: 60,
   advance_days_required: 2, admin_action_days: 3,
 };

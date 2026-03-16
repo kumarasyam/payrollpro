@@ -29,7 +29,7 @@ export default function EmployeeDashboard() {
     queryKey: ["leave-policy"],
         queryFn: async () => {
         const list = await appClient.entities.LeavePolicy.list();
-        return list?.[0] || { max_sick: 4, max_casual: 10, max_earned: 10, max_maternity: 168, max_paternity: 60 };
+        return list?.[0] || { max_sick: 4, max_casual: 6, max_earned: 14, max_maternity: 168, max_paternity: 60 };
     }
   });
 

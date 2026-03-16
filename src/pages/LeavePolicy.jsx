@@ -6,8 +6,8 @@ import { Info, CheckCircle2 } from "lucide-react";
 // ── Fixed Company Leave Policy ─────────────────────────────────────────────────
 const FIXED_POLICY = {
     max_sick: 4,
-    max_casual: 10,
-    max_earned: 10,
+    max_casual: 6,
+    max_earned: 14,
     max_maternity: 168,   // 24 weeks
     max_paternity: 60,
     advance_days_required: 2,
